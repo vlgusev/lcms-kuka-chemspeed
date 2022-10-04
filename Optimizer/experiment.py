@@ -23,7 +23,7 @@ class Experiment:
     BATCH_FILES = 1  # number of files that we want to see in the queue, should be BATCH/BATCH_FILES = MINI_BATCH
     SLEEP_DELAY = 5  # delay in seconds before querying the queue folder again
 
-    directory_path = 'D:\\Workflow\\'
+    directory_path = 'C:\\ACL_UoL\\Optimiser\\'
 
     def __init__(self, directory_path=None):
         if directory_path:
@@ -163,6 +163,8 @@ class Experiment:
                                                                                                   b[0]))
                     new_constraints.append(s)
                 self.constraints = new_constraints
+
+            #print(self.constraints)
 
         except IOError:
             print("There is no configuration file in the experiment folder.")
