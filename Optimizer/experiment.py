@@ -596,13 +596,13 @@ class Experiment:
 
         Note (1) 'Name_dispensed' has preference over simply 'Name'
              (2) Silently ignores values of all other compounds!
-             (3) For now we kick out rows with Nan's in 'hydrogen_evolution'
+             (3) For now we kick out rows with Nan's in 'peak_area'
 
         '''
         for filename in self.parser.process_completed_folder(self.name):
             # print(filename)
             frame = self.parser.processed_files[filename]
-            frame.dropna(subset=['hydrogen_evolution'],
+            frame.dropna(subset=['PeakArea'],
                          inplace=True)  # Update on a later date for a more appropriate handling
             # print(filename, self.parser.processed_files[filename].tail())
             print(f"Adding data from {filename} to the list of points: {len(frame)} measurements.")
@@ -674,7 +674,7 @@ class Experiment:
             print('Total number of points in model: ' + str(len(self.points)))
 
     def optimisation_target(self, frame):
-        return frame['hydrogen_evolution_micromol']
+        return frame['peak_area']
 
     def new_model_available(self):
         new_uuid = self.get_saved_model_uuid()
@@ -790,10 +790,10 @@ def watch_queue(multiprocessing=1, sampler='greedy'):
 
 if __name__ == "__main__":
     try:
-        p1 = multiprocessing.Process(target=watch_completed, args=(360,)) #Delay for model building when finding new data
+        p1 = multiprocessing.Process(target=watch_completed, args=(3,)) #Delay for model building when finding new data
         p1.start()
         sleep(Experiment.SLEEP_DELAY)
-        p2 = multiprocessing.Process(target=watch_queue, args=(7, 'capitalist',)) #CPUs used for batch generation and sampler choice, Search strategy
+        p2 = multiprocessing.Process(target=watch_queue, args=(6, 'capitalist',)) #CPUs used for batch generation and sampler choice, Search strategy
         p2.start()
     except:
         tb = traceback.format_exc()

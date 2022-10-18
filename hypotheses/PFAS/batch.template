@@ -1,2 +1,2 @@
-SampleIndex,DMSO,MeCN,EtOH,iPrOH,K2HPO4,Na2HPO4
-${idx},${DMSO},${MeCN},${EtOH},${iPrOH},${K2HPO4},${Na2HPO4}
+SampleIndex,DMSO,MeCN,water,Acetone,EtOAc,K2HPO4,Na2HPO4,K3PO4,K2CO3,Cs2CO3
+${idx},${DMSO},${MeCN},${water},${Acetone},${EtOAc},${K2HPO4},${Na2HPO4},${K3PO4},${K2CO3},${Cs2CO3}

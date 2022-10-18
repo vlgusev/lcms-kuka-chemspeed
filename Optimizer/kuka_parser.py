@@ -31,6 +31,9 @@ class Parser:
         #Water hack pattern
         self.water = re.compile(r"\$\{water\}")
 
+        # batch number hack CHANGE IT!
+        self.batch_num = re.compile(r"\$\{batch_number\}")
+
         #Test hack pattern.
         self.test = re.compile(r"\$\{test\}")
 
@@ -180,13 +183,13 @@ class Parser:
 
                     #############################################
                     #JUST ADD WATER. REMOVE FOR OTHER EXPERIMENTS
-                    water = 5
+                    water = 0.9
                     
                     #TEST
                     # test = 10
 
                     for chem, amount in quantity.items():
-                        if chem in liquids :
+                        if chem in liquids:
                             water = water - amount
 
                         #TEST
@@ -197,9 +200,27 @@ class Parser:
                         water = 0
                     #############################################
 
+                    '''DIRTY HACK GOES HERE TO MODIFY THE UNITS FOR CHEMSPEED
+                    '''
+
+                    unit_mult = {
+                        'K2HPO4': 200,
+                        'Na2HPO4': 300,
+                        'K3PO4': 100,
+                        'K2CO3': 152,
+                        'Cs2CO3': 113
+                    }
+
+                    ##### DONE WITH IT
+
 
                     for chem, amount in quantity.items():
-                        line = self.patterns[chem].sub(self.FLOAT_FORMAT.format(amount), line)
+                        if chem not in liquids:
+                            line = self.patterns[chem].sub(self.FLOAT_FORMAT.format(amount*unit_mult[chem]), line)
+                        else:
+                            line = self.patterns[chem].sub(self.FLOAT_FORMAT.format(amount), line)
+
+
 
                     line = self.patterns['idx'].sub(str(i), line)
                     line = self.patterns['batch_name'].sub(batch_name, line)
