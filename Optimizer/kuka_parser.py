@@ -31,9 +31,6 @@ class Parser:
         #Water hack pattern
         self.water = re.compile(r"\$\{water\}")
 
-        # batch number hack CHANGE IT!
-        self.batch_num = re.compile(r"\$\{batch_number\}")
-
         #Test hack pattern.
         self.test = re.compile(r"\$\{test\}")
 
@@ -165,12 +162,14 @@ class Parser:
         '''
         try:
             path = self.directory_path+'/runqueue/' + batch_name + '.run'
+
+            batch_num = re.findall(r'\d+', batch_name)
+            batch_num = int(batch_num[0])
+            #print(batch_num)
+
             with open(path,"w") as f:
                 f.write(f'batch_name:{batch_name}\n')
                 
-
-
-
                 f.write(self.submission_header + '\n\n')
 
                 f.write(datetime.datetime.now().strftime('submit_start_datetime:%Y.%m.%d.%H.%M.%S\n\n'))
@@ -222,7 +221,7 @@ class Parser:
 
 
 
-                    line = self.patterns['idx'].sub(str(i), line)
+                    line = self.patterns['idx'].sub(str(i + batch_num*16), line)
                     line = self.patterns['batch_name'].sub(batch_name, line)
                     line = self.patterns['sample_number'].sub(str(i+1), line)
 
