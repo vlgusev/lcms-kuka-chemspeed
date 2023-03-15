@@ -1,0 +1,37 @@
+{
+    "dataset": "Test",
+    "exp_settings":{"problem": "min",
+                    "n_start": 10,
+                    "batch_size": 16,
+                    "max_iters": 1
+                    },
+    "bo_params": {
+                    "Acquisition": "EI",
+                    "kern_name":"CoulombKernel",
+                    "kern_params" : {
+                                    },  
+                    "model_noise_costraint": [
+                        1e-6,
+                        10
+                    ],
+                    "kernel_constraints" : {
+
+                                            },
+                                            
+                    "model_constraints" : {
+                                            "0":{"0":0.5,"1":0.1}, 
+                                            "1": {"0":[1e-6, 10]}}
+                                            
+                    },
+    "LAW_params":{
+                    "var_size":10,
+                    "c_value": 1,
+                    "b_value": 10
+                    },
+    
+   "descr_params": {
+                    "descript_type": "Coulomb",                    
+                    "nmax":5, 
+                    }    
+    
+}
