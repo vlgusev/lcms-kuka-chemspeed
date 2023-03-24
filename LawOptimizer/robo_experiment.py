@@ -78,8 +78,10 @@ class Experiment(object):
         descript_type = settings["descr_params"]["descript_type"]
         chem_config_path = "./{}.xyz".format(dataset_name)
         self.config_path = chem_config_path
-        descr_file_name = "{}_{}.npy".format(descript_type, dataset_name)
+        # descr_file_name = "{}_{}.npy".format(descript_type, dataset_name)
+        descr_file_name = "{}.npy".format(dataset_name)
         descr_path = os.path.join(self.descr_path, descr_file_name)
+        # descr_path = os.path.join(self.descr_path, dataset_name)
         self.descr_path = descr_path
         
         # -- Setting all the possible conpounds of the experiment
@@ -149,18 +151,23 @@ class Experiment(object):
         return X, Y
 
 
-    def create_optimizer(self, ndims, optimize_restarts, weigth_function=None):
+    def create_optimizer(self, ndims, optimize_restarts, domain=None, weigth_function=None):
         '''
             Creates an optimizer from scratch if there is no previous model.
             Loads a file and creates a model if there is a model saved. 
         '''
         # TO DO: add function to create models from file to Utils module 
         descr_dim = len(self.descriptors[0])
-        if self.kernel_name == "Coulomb":
+        if self.kernel_name == "CoulombKernel":
             GPy_kernel = RBF(input_dim=descr_dim, ARD=True)
-            kernel = CoulombKernel(input_dim=ndims, GPy_kern=GPy_kernel)
+            GPy_kernel.lengthscale.constrain_bounded(1e-09, 1e+09)
+
+            print('The RBF kernel is:', GPy_kernel)
+            # kernel = CoulombKernel(input_dim=ndims, GPy_kern=GPy_kernel, domain=domain)
+            kernel = CoulombKernel(input_dim=ndims, GPy_kern=GPy_kernel.copy(), domain=self.descriptors)
+            print(kernel.kernel)
         elif self.kernel_name ==  "REMatch":
-            kernel = GPyREMatchKern()
+            kernel = GPyREMatchKern(domain=domain)
             if self.kern_params is not None:
                 for k, p in  self.kern_params.items():
                     setattr(kernel,k,p)
@@ -224,20 +231,20 @@ class Experiment(object):
 
 
 # %%
-
-
-domain_dict = {
-                'DMSO': 0,
-                'MeCN': 1,
-                'water': 2,
-                'Acetone': 3,
-                'EtOAc': 4,
-                'K2HPO4': 5,
-                'Na2HPO4': 6,
-                'K3PO4': 7,
-                'K2CO3': 8,
-                'Cs2CO3': 9
-                }
+# descr_path = "./descriptors/Test.npy" 
+# domain_dict = np.load(descr_path,allow_pickle=True).item()
+# domain_dict = {
+#                 'DMSO': 0,
+#                 'MeCN': 1,
+#                 'water': 2,
+#                 'Acetone': 3,
+#                 'EtOAc': 4,
+#                 'K2HPO4': 5,
+#                 'Na2HPO4': 6,
+#                 'K3PO4': 7,
+#                 'K2CO3': 8,
+#                 'Cs2CO3': 9
+#                 }
 
 if __name__ == "__main__":
     exp = Experiment(
@@ -246,11 +253,48 @@ if __name__ == "__main__":
                     exp_res_path = "./experiments/"
                     )
     exp.apply_settings()
-    bopt = exp.create_optimizer(ndims=10, optimize_restarts=5)
+    bopt = exp.create_optimizer(ndims=10, optimize_restarts=5, )
 
     X_new, Y_new=exp.get_inputs()
 
-    bopt.create_model(X_new, Y_new, **exp.model_constraints)
+# %%
+XX = X_new[:4]; YY = Y_new[:4].reshape(-1,1)
+bopt.create_model(XX, YY, **exp.model_constraints)
 
 
 # %%
+exp = Experiment(
+                root_path = "./",
+                settings_file = "expsettings.json",
+                exp_res_path = "./experiments/"
+                )
+exp.apply_settings()
+
+
+descriptors = exp.descriptors
+ndims = len(descriptors[0])
+GPy_kernel = RBF(input_dim=ndims, ARD=True)
+kernel = CoulombKernel(input_dim=1, GPy_kern=GPy_kernel.copy(), domain=descriptors)
+
+# %%
+
+#################################  TO SAVE #################################
+D ={k: bopt.__dict__[k]
+for k in ['batch_size', 'acquisition_name', 'law_params', 'kernel', 'optimize_restarts']
+}
+gm_dict = bopt.model.__dict__
+if 'kernel'in gm_dict.keys():
+    del gm_dict ['kernel']
+D.update({'gp_model':gm_dict})
+np.save('./Test_dict.npy', D)
+#################################  LOAD AND CREATE #################################
+
+data= np.load('./Test_dict.npy',allow_pickle=True).item()
+gpmodel = data.pop('gp_model')
+gp_reg_model = gpmodel.pop('model')
+# gp_reg_model = GPy.models.GPRegression(**gp_reg_dict)
+from GPyOpt.models import GPModel
+GPModel = GPModel(**gpmodel)
+GPModel.model = gp_reg_model
+new_opt = LAW.LAW_BOptimizer(**data)
+# new_opt.model=GPModel

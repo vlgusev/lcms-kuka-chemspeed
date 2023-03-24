@@ -27,7 +27,7 @@ class CoulombKernel(Kern):
     def __init__(self, input_dim, GPy_kern=None, domain=None, seed = None, active_dims=None, useGPU=False, *args, **options):
         super().__init__(input_dim, active_dims, useGPU=useGPU, name="Coulomb", *args, **options)
 
-        self._name = "Coulomb"
+        self._name = "CoulombKernel"
         self.kernel = GPy_kern
         self.domain =domain
         self.variance=self.kernel.variance

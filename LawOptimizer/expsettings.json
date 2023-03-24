@@ -1,5 +1,5 @@
 {
-    "dataset": "Test",
+    "dataset": "Dyes",
     "exp_settings":{"problem": "min",
                     "n_start": 10,
                     "batch_size": 16,
@@ -30,8 +30,7 @@
                     },
     
    "descr_params": {
-                    "descript_type": "Coulomb",                    
-                    "nmax":5, 
+                    "descript_type": "Coulomb"                    
                     }    
     
 }

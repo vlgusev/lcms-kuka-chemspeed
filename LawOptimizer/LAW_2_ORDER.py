@@ -133,17 +133,41 @@ class LAW_BOptimizer(object):
         ''' Creates model and sets ups self.model=model'''
         kernel = self.kernel.copy()
         noise_var = np.std(Y)*0.001
-
-        model = GPModel(kernel, optimize_restarts=self.optimize_restarts)
-        model.model = GPRegression(X, Y, kernel=kernel, noise_var=noise_var)
-        self.apply_model_constraints(model, constraints_dict)
-        model.model.optimize()
-        self.model=model
+        gp_model = GPModel(kernel, optimize_restarts=self.optimize_restarts)
+        # gp_model.model = GPRegression(X, Y, kernel=kernel, noise_var=noise_var)
+        gp_model.model = GPRegression(X, Y, kernel=kernel)
+        self.model=gp_model
+        self.apply_model_constraints(constraints_dict)
+        gp_model.model.optimize()
+        # self.model=gp_model
 
     @staticmethod
-    def model_from_file():
+    def model_from_dict(dict_model):
         ''' Builds model from loaded file '''
-        pass
+        gpmodel = dict_model.pop('gp_model')
+        gp_reg_model = gpmodel.pop('model')
+        # gp_reg_model = GPy.models.GPRegression(**gp_reg_dict)
+        from GPyOpt.models import GPModel
+        GPModel = GPModel(**gpmodel)
+        GPModel.model = gp_reg_model
+        optimizer = LAW_BOptimizer(**dict_model)
+        return  optimizer
+
+
+
+
+
+    def create_dict(self):
+        '''Creates a dictionary to be saved'''
+        D ={k: self.__dict__[k]
+            for k in ['batch_size', 'acquisition_name', 'law_params', 'kernel', 'optimize_restarts']
+            }
+        # clean up: remove the kernel from dictionary
+        gm_dict = self.model.__dict__
+        if 'kernel'in gm_dict.keys():
+            del gm_dict ['kernel']
+        D.update({'gp_model':gm_dict})
+        return D
 
     def apply_model_constraints(self, constraints_dict):
         '''  '''
