@@ -5,6 +5,7 @@ import copy
 from scipy.linalg import cho_factor, cho_solve
 from sklearn.preprocessing import normalize, minmax_scale
 from GPyOpt.models import GPModel
+from GPyOpt.acquisitions.EI import AcquisitionEI as EI
 from GPy.models import GPRegression
 from GPyOpt.core.task.space import Design_space
 import Kernels
@@ -116,6 +117,7 @@ class LAW_BOptimizer(object):
 
     def  __init__(
                     self,
+                    domain,
                     acquisition_name,
                     batch_size,
                     law_params,
@@ -125,6 +127,13 @@ class LAW_BOptimizer(object):
                     ):
         self.batch_size = batch_size
         self.acquisition_name = acquisition_name
+        space = Design_space(domain)
+
+        if self.acquisition_name == "EI":
+            AF = EI(self.model, space, optimizer=None)
+        else:
+            raise NotImplementedError("Only EI acquisition function implemented at the moment")
+        self.acquisition = AF
         self.law_params = law_params
         self.kernel = kernel
         self.optimize_restarts = optimize_restarts
@@ -134,8 +143,8 @@ class LAW_BOptimizer(object):
         kernel = self.kernel.copy()
         noise_var = np.std(Y)*0.001
         gp_model = GPModel(kernel, optimize_restarts=self.optimize_restarts)
-        # gp_model.model = GPRegression(X, Y, kernel=kernel, noise_var=noise_var)
-        gp_model.model = GPRegression(X, Y, kernel=kernel)
+        gp_model.model = GPRegression(X, Y, kernel=kernel, noise_var=noise_var)
+        # gp_model.model = GPRegression(X, Y, kernel=kernel)
         self.model=gp_model
         self.apply_model_constraints(constraints_dict)
         gp_model.model.optimize()
@@ -144,25 +153,22 @@ class LAW_BOptimizer(object):
     @staticmethod
     def model_from_dict(dict_model):
         ''' Builds model from loaded file '''
+        
         gpmodel = dict_model.pop('gp_model')
         gp_reg_model = gpmodel.pop('model')
         # gp_reg_model = GPy.models.GPRegression(**gp_reg_dict)
-        from GPyOpt.models import GPModel
         GPModel = GPModel(**gpmodel)
         GPModel.model = gp_reg_model
         optimizer = LAW_BOptimizer(**dict_model)
         return  optimizer
-
-
-
-
 
     def create_dict(self):
         '''Creates a dictionary to be saved'''
         D ={k: self.__dict__[k]
             for k in ['batch_size', 'acquisition_name', 'law_params', 'kernel', 'optimize_restarts']
             }
-        # clean up: remove the kernel from dictionary
+        # --clean up: removal the kernel from dictionary necessary to 
+        # --rebuild the optimizer from the dictionary D
         gm_dict = self.model.__dict__
         if 'kernel'in gm_dict.keys():
             del gm_dict ['kernel']
@@ -187,6 +193,38 @@ class LAW_BOptimizer(object):
         Y = np.vstack([self.model.model.Y, Y_new])
         self.model.model.set_XY(X, Y)
         self.model.model.optimize()
+
+
+
+    def compute_batch(self, verbose=True, X_testing=None):
+        L_obj_val = []
+
+        AF = self.acquisition._compute_acq(self.search_domain)
+        idx = np.argmax(AF)
+        X_af =np.atleast_2d(self.search_domain[idx])
+        to_remove = np.where(self.search_domain==X_af)[0]
+        self.search_domain=np.delete(self.search_domain, to_remove, axis=0)
+
+        X_batch = X_af
+        for j in range(1, self.batch_size):
+            AF = np.delete(AF, idx).reshape(-1,1)
+            LAW = self.objective.compute_value(AF, self.search_domain, X=X_batch) 
+            idx = np.argmax(LAW)
+            new_sample = np.atleast_2d(self.search_domain[idx])
+            to_remove = np.where(self.search_domain==new_sample)[0]
+            self.search_domain=np.delete(self.search_domain, to_remove, axis=0)
+            L_max = LAW[idx]
+
+            if verbose:
+                print("New sample: {}, max LAW:{}".format(new_sample, L_max))
+            X_batch = np.vstack([X_batch, new_sample])
+            if X_testing is not None:
+                L_obj_val.append(self.objective.compute_value(AF, self.search_domain, X=X_testing))
+        return X_batch, L_obj_val
+
+
+
+
 
 
 

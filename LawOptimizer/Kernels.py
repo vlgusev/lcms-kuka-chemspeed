@@ -23,6 +23,12 @@ from dscribe.kernels import REMatchKernel as Rematch
 
 # %%
 class CoulombKernel(Kern):
+    ''' Wrapper od GPy kernel to be used with eigenvalues Coulomb descriptors.
+        input_dim: dimensionality of input data (not of the descriptors)
+        GPy_kern: GPy kernel used with the descriptors.
+        domain: list of indeces of all the molecules available.   
+        
+    '''
 
     def __init__(self, input_dim, GPy_kern=None, domain=None, seed = None, active_dims=None, useGPU=False, *args, **options):
         super().__init__(input_dim, active_dims, useGPU=useGPU, name="Coulomb", *args, **options)
