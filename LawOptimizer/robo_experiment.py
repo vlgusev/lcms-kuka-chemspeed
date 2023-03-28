@@ -137,18 +137,24 @@ class Experiment(object):
             new_data = pd.read_csv(exp_file, skiprows=skiprows)
             new_data.drop(["SampleIndex"], axis=1, inplace=True)
             Y_new = new_data["PeakArea"].values
-            Y_new.reshape(-1,1)
-            X_new=new_data.drop("PeakArea", axis=1).values
+            Y_new = Y_new.reshape(-1,1)
+            X_data=new_data.drop("PeakArea", axis=1).values
+
+            # -- conversion data into x = np.array([concentration, mol_idx])
+            idxs = [np.where(x > 0)[0] for x in list( X_data)]
+            idxs = np.vstack(idxs)
+            concs =  X_data[ X_data > 0].reshape(-1,1)
+            X_new = np.hstack([concs, idxs])
 
         if X is not None:
-            X=np.vstack([X, X_new])
+            X=np.vstack([X,  X_new])
             Y=np.vstack([Y, Y_new])
         else:
-            X = X_new
+            X =  X_new
             Y = Y_new
-        Y=Y.reshape(-1,1)
-        if X_new.ndim == 1:
-            X_new.reshape(-1,1)
+        # Y=Y.reshape(-1,1)
+        # if  X_new.ndim == 1:
+        #     X_new.reshape(-1,1)
         return X, Y
 
 
@@ -169,11 +175,11 @@ class Experiment(object):
                     setattr(kernel,k,p)
         return kernel
     
-    def create_model(self, kernel, X, Y):
+    def create_model(self, kernel, X, Y, optimize_restarts=5):
         ''' '''
         kernel = kernel.copy()
         noise_var = np.std(Y)*0.001
-        gp_model = LAW.GPModel(kernel, optimize_restarts=self.optimize_restarts)
+        gp_model = LAW.GPModel(kernel, optimize_restarts=optimize_restarts)
         gp_model.model = LAW.GPRegression(X, Y, kernel=kernel, noise_var=noise_var)
         # gp_model.model = GPRegression(X, Y, kernel=kernel)
         # self.model=gp_model
@@ -188,18 +194,24 @@ class Experiment(object):
                     gp_model.model.parameters[int(k)].parameters[int(j)].constrain_bounded(*c)
         return gp_model
     
-    def create_LAW_optimizer(self, search_domain):
+    def create_LAW_optimizer(self, search_domain, domain):
         ''' Creates the LAW_optimizer.
             To be used when the experiment has not yet started, and no optimizer 
             model has been saved  yet. 
             search_domain: 2D array with all the input points.
         '''
+
+
         v_lim = self.law_params['var_size']
         b, c = self.law_params['b_value'], self.law_params['c_value']
         weight_function = lambda x:c + b*x
         kernel = self.create_kernel()
-        gp_model = self.create_model(kernel,copy())
-        AF = self.create_acquisition()
+        gp_model =self.create_model(kernel.copy(), X_new, Y_new)
+        # AF = self.create_acquisition()
+        space = LAW.Design_space(domain)
+        acq_class = eval("LAW." + exp.acquisition_name)
+        AF = acq_class(gp_model, space, optimizer=None)
+
         LAW_func = LAW.LAW_acq(
                                 model=gp_model,
                                 v_lim=v_lim,
@@ -214,6 +226,7 @@ class Experiment(object):
                                 # n_jobs=1,
                                 verbose=False,
                                 )
+        return optimizer
 
     # def create_optimizer(self, ndims, optimize_restarts, domain=None, weigth_function=None):
 
@@ -325,51 +338,62 @@ if __name__ == "__main__":
                     exp_res_path = "./experiments/"
                     )
     exp.apply_settings()
-    ndims = len(exp.descriptors)
+    # ndims = len(exp.descriptors)
+    ndims = 2
     mol_idxs = list(exp.descriptors.keys())
     domain = [{'name':'concentration', 'type':'discrete', 'domain':0.1*np.arange(0,11), 'dimensionality':1},
               {'name':'mol_id', 'type':'discrete', 'domain':mol_idxs, 'dimensionality':1}]
 
     search_domain = list(product((0.1*np.arange(0,11)).tolist(), mol_idxs ))
 
-    bopt = exp.create_optimizer(ndims=ndims,
-                    domain = domain,
-                    # acquisition_name =  exp.acquisition_name,
-                    # batch_size = exp.batch_size,
-                    # law_params = exp.law_params,
-                    # kernel = kernel, 
-                    optimize_restarts=5
-                    )
-
-
-
-
     X_new, Y_new=exp.get_inputs()
 
+    # -- remove initial inputs from the search space
     to_remove = list(map(tuple, X_new.tolist()))
     search_domain_init=list(set(search_domain) - set(to_remove))
     X_domain_init = np.array(search_domain_init)
+
+    bopt =  exp.create_LAW_optimizer( X_domain_init, domain)
+    # kernel = exp.create_kernel()
+    # gp_model = exp.create_model(kernel, X_new, Y_new)
+
+    # space = LAW.Design_space(domain)
+    # acq_class = eval("LAW." + exp.acquisition_name)
+    # AF = acq_class(gp_model, space, optimizer=None)
+
+    # bopt = exp.create_optimizer(ndims=ndims,
+    #                 domain = domain,
+    #                 # acquisition_name =  exp.acquisition_name,
+    #                 # batch_size = exp.batch_size,
+    #                 # law_params = exp.law_params,
+    #                 # kernel = kernel, 
+    #                 optimize_restarts=5
+    #                 )
+
+    bopt.compute_batch()
+#%%
+
+    # to_remove = list(map(tuple, X_new.tolist()))
+    # search_domain_init=list(set(search_domain) - set(to_remove))
+    # X_domain_init = np.array(search_domain_init)
     # bopt.create_model(X_new, Y_new, **exp.model_constraints)
 
 
-# %%
-XX = X_new[:4]; YY = Y_new[:4].reshape(-1,1)
-# bopt.create_model(XX, YY, **exp.model_constraints)
 
 
 # %%
-exp = Experiment(
-                root_path = "./",
-                settings_file = "expsettings.json",
-                exp_res_path = "./experiments/"
-                )
-exp.apply_settings()
+# exp = Experiment(
+#                 root_path = "./",
+#                 settings_file = "expsettings.json",
+#                 exp_res_path = "./experiments/"
+#                 )
+# exp.apply_settings()
 
 
-descriptors = exp.descriptors
-ndims = len(descriptors[0])
-GPy_kernel = RBF(input_dim=ndims, ARD=True)
-kernel = CoulombKernel(input_dim=1, GPy_kern=GPy_kernel.copy(), domain=descriptors)
+# descriptors = exp.descriptors
+# ndims = len(descriptors[0])
+# GPy_kernel = RBF(input_dim=ndims, ARD=True)
+# kernel = CoulombKernel(input_dim=1, GPy_kern=GPy_kernel.copy(), domain=descriptors)
 
 # %%
 

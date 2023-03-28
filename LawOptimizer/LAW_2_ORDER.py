@@ -93,7 +93,8 @@ class LAW_Evaluator(object):
         AF = self.acquisition._compute_acq(self.search_domain)
         idx = np.argmax(AF)
         X_af =np.atleast_2d(self.search_domain[idx])
-        to_remove = np.where(self.search_domain==X_af)[0]
+        # to_remove = np.where(self.search_domain==X_af)[0]
+        to_remove = np.where((self.search_domain==X_af).all(axis=1))
         self.search_domain=np.delete(self.search_domain, to_remove, axis=0)
 
         X_batch = X_af
@@ -102,7 +103,9 @@ class LAW_Evaluator(object):
             LAW = self.objective.compute_value(AF, self.search_domain, X=X_batch) 
             idx = np.argmax(LAW)
             new_sample = np.atleast_2d(self.search_domain[idx])
-            to_remove = np.where(self.search_domain==new_sample)[0]
+            # to_remove = np.where(self.search_domain==new_sample)[0]
+            to_remove = np.where((self.search_domain==new_sample).all(axis=1))
+
             self.search_domain=np.delete(self.search_domain, to_remove, axis=0)
             L_max = LAW[idx]
 
@@ -118,7 +121,7 @@ class LAW_BOptimizer(object):
     def  __init__(
                     self,
                     domain,
-                    acquisition_name,
+                    # acquisition_name,
                     batch_size,
                     law_params,
                     kernel, 
@@ -126,7 +129,7 @@ class LAW_BOptimizer(object):
                     weigth_function =  None
                     ):
         self.batch_size = batch_size
-        self.acquisition_name = acquisition_name
+        # self.acquisition_name = acquisition_name
         space = Design_space(domain)
 
         if self.acquisition_name == "EI":

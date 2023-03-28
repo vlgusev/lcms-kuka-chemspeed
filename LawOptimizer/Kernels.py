@@ -49,10 +49,12 @@ class CoulombKernel(Kern):
         ''' Utility  method to look-up for descriptor from index.
             useful when the serch space is the space of the indexes
             X : 2D array of indexes'''
-        idxs  = [np.where(xx>0)[0] for xx in list(X)]
-        idxs = np.vstack(idxs)
-        concs = X[X>0].reshape(-1,1)
-        D = [self.domain[int(j)] for j in idxs.flatten().tolist()]
+        # idxs  = [np.where(xx>0)[0] for xx in list(X)]
+        # idxs = np.vstack(idxs)
+        # concs = X[X>0].reshape(-1,1)
+        idxs = X[:,1].tolist()
+        concs = X[:,0].reshape(-1,1)
+        D = [self.domain[int(j)] for j in idxs]
         D = np.vstack(D)
         mols = np.hstack([concs, D])
         return mols
