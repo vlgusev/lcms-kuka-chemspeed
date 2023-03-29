@@ -7,20 +7,6 @@ from GPy.core.parameterization.param import  Param
 from paramz.transformations import Logexp
 from dscribe.kernels import REMatchKernel as Rematch
 
-# global  descriptors, targets
-
-# descriptors = config.descriptors
-# targets  = config.targets
-
-# def permute(descriptors,  targets, seed=None):
-    # if seed is not None:
-    #     np.random.seed(seed)
-    # idxs = np.random.permutation(range(len(targets)))
-    # descriptors = descriptors[idxs]
-    # targets = targets[idxs]
-    # return idxs, descriptors, targets
-
-
 # %%
 class CoulombKernel(Kern):
     ''' Wrapper od GPy kernel to be used with eigenvalues Coulomb descriptors.
@@ -49,9 +35,6 @@ class CoulombKernel(Kern):
         ''' Utility  method to look-up for descriptor from index.
             useful when the serch space is the space of the indexes
             X : 2D array of indexes'''
-        # idxs  = [np.where(xx>0)[0] for xx in list(X)]
-        # idxs = np.vstack(idxs)
-        # concs = X[X>0].reshape(-1,1)
         idxs = X[:,1].tolist()
         concs = X[:,0].reshape(-1,1)
         D = [self.domain[int(j)] for j in idxs]
@@ -81,13 +64,6 @@ class CoulombKernel(Kern):
         self.kernel.update_gradients_full(dL_dK, descr_1, X2=descr_2)
     
     def to_dict(self):
-        # input_dict = {}
-        # GPy_kern_dict = self.GPy_kern.to_dict()
-        # input_dict['class'] = self._name 
-        # input_dict['kernel'] = GPy_kern_dict
-        # input_dict['variance'] = self.variance
-        # input_dict['lengthscale'] = self.lengthscale
-        # input_dict['options'] = self.options
         pass
 
 
@@ -134,9 +110,13 @@ class GPyREMatchKern(Kern):
             descriptors: the full set of descriptors, from which to 
                          search by index.
             returns D: list of descriptors'''
-        X_descr = X[:-n]
-        D = [self.domain[int(j)] for j in X_descr.flatten().tolist()]
-        return D
+        idxs = X[:,1].tolist()
+        concs = X[:,0].reshape(-1,1)
+        D = [self.domain[int(j)] for j in idxs]
+        D = np.vstack(D)
+        mols = np.hstack([concs, D])
+        return mols
+
 
     def K(self, X1, X2=None):
         if X2 is None:

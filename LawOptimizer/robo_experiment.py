@@ -80,10 +80,8 @@ class Experiment(object):
         descript_type = settings["descr_params"]["descript_type"]
         chem_config_path = "./{}.xyz".format(dataset_name)
         self.config_path = chem_config_path
-        # descr_file_name = "{}_{}.npy".format(descript_type, dataset_name)
         descr_file_name = "{}.npy".format(dataset_name)
         descr_path = os.path.join(self.descr_path, descr_file_name)
-        # descr_path = os.path.join(self.descr_path, dataset_name)
         self.descr_path = descr_path
         
         # -- Setting all the possible conpounds of the experiment
@@ -110,7 +108,6 @@ class Experiment(object):
 
         '''
         descr_params = settings["descr_params"]
-        # if os.path.isfile(descr_path):
         if os.path.isfile(self.descr_path):
             print("Loading descriptors")
             descriptors = np.load(
@@ -157,9 +154,6 @@ class Experiment(object):
         else:
             X =  X_new
             Y = Y_new
-        # Y=Y.reshape(-1,1)
-        # if  X_new.ndim == 1:
-        #     X_new.reshape(-1,1)
         return X, Y
 
 
@@ -170,9 +164,7 @@ class Experiment(object):
         # --  Creating the kernel 
         if self.kernel_name == "CoulombKernel":
             GPy_kernel = RBF(input_dim=descr_dim, ARD=True)
-            # GPy_kernel.lengthscale.constrain_bounded(1e-09, 1e+09)
             kernel = CoulombKernel(input_dim=ndims, GPy_kern=GPy_kernel.copy(), domain=self.descriptors)
-            # print(kernel.kernel)
         elif self.kernel_name ==  "REMatch":
             kernel = GPyREMatchKern(domain=domain)
             if self.kern_params is not None:
@@ -186,10 +178,8 @@ class Experiment(object):
         noise_var = np.std(Y)*0.001
         gp_model = LAW.GPModel(kernel, optimize_restarts=optimize_restarts)
         gp_model.model = LAW.GPRegression(X, Y, kernel=kernel, noise_var=noise_var)
-        # gp_model.model = GPRegression(X, Y, kernel=kernel)
-        # self.model=gp_model
 
-        # --  settin the gp model contraints
+        # --  setting the gp model contraints
         constraints = self.model_constraints
         for k in  constraints.keys():
             for j, c in  constraints[k].items():
@@ -225,9 +215,6 @@ class Experiment(object):
             gp_model.model.set_XY(X_all, Y_all)
         
         gp_model.model.optimize()
-
-
-        # AF = self.create_acquisition()
         space = LAW.Design_space(domain)
         acq_class = eval("LAW." + exp.acquisition_name)
         AF = acq_class(gp_model, space, optimizer=None)
@@ -249,44 +236,6 @@ class Experiment(object):
                                 )
         return optimizer
 
-    # def create_optimizer(self, ndims, optimize_restarts, domain=None, weigth_function=None):
-
-
-    #     '''
-    #         Creates an optimizer from scratch if there is no previous model.
-    #         Loads a file and creates a model if there is a model saved. 
-    #     '''
-    #     # TO DO: add function to create models from file to Utils module 
-    #     descr_dim = len(self.descriptors[0]) # dimensionality of the descriptors
-        
-    #     # --  Creating the kernel 
-    #     if self.kernel_name == "CoulombKernel":
-    #         GPy_kernel = RBF(input_dim=descr_dim, ARD=True)
-    #         GPy_kernel.lengthscale.constrain_bounded(1e-09, 1e+09)
-
-    #         print('The RBF kernel is:', GPy_kernel)
-    #         # kernel = CoulombKernel(input_dim=ndims, GPy_kern=GPy_kernel, domain=domain)
-    #         kernel = CoulombKernel(input_dim=ndims, GPy_kern=GPy_kernel.copy(), domain=self.descriptors)
-    #         print(kernel.kernel)
-    #     elif self.kernel_name ==  "REMatch":
-    #         kernel = GPyREMatchKern(domain=domain)
-    #         if self.kern_params is not None:
-    #             for k, p in  self.kern_params.items():
-    #                 setattr(kernel,k,p)
-
-              
-    #     bopt = LAW.LAW_BOptimizer(
-    #                             domain = domain,
-    #                             acquisition_name = self.acquisition_name,
-    #                             batch_size = self.batch_size,
-    #                             law_params = self.law_params,
-    #                             kernel = kernel,
-    #                             optimize_restarts=optimize_restarts,
-    #                             weigth_function = weigth_function
-    #     )
-    #     X=self.X; Y=self.Y
-    #     return bopt
-
 
     def  suggest_batch(self, optimizer, X_testing=None):
         '''
@@ -307,7 +256,6 @@ class Experiment(object):
 
     def save_batch(self):
 
-        
         f_name = "PFAS_Dyes-{num:04}.run".format(num=self.num_batch)
         save_path = os.path.join(exp.exp_res_path, f_name)
         X_out = np.zeros((len(X_batch), len(columns)-1))
@@ -317,39 +265,6 @@ class Experiment(object):
         # df = pd.DataFrame(columns=columns, data=X_batch)
         np.savetxt(save_path, X_out, fmt='%.3f', delimiter=',' ,header= ",".join(columns), comments='')
 
-
-
-
-
-    def run(self):
-
-        while True:
-            n+=1
-
-            # check for new experimental data
-            data = self.get_inputs()
-            if data is None:
-                continue
-            else: 
-                X_new, Y_new = data 
-            print('New data available')
-            self.num_batch +=1
-            # update the optimizer with new data to add to the dataset
-            # Opt.X_new, Opt.Y_new = X_new, Y_new
-
-            # write the new data to file.  
-            # For  the moment this file is not used. 
-            # Could be used by optimizer to load the data to add to its model 
-            # new_data.to_csv("./new_data.csv")
-
-            if self.runnning==True:
-                continue
-
-            X_batch = opt.run_bo()
-            opt.runnning=False
-
-            # save batch to file for the robot
-            out_data=pd.DataFrame(columns = 'mol_idxs', data=X_batch)
 
 
 # %%
@@ -384,30 +299,10 @@ if __name__ == "__main__":
     search_domain_init=list(set(search_domain) - set(to_remove))
     X_domain_init = np.array(search_domain_init)
 
-    # bopt =  exp.create_LAW_optimizer( X_domain_init, domain)
     bopt =  exp.create_LAW_optimizer(X_domain_init, domain, X_new, Y_new, Costs=D_costs)
 
-    # kernel = exp.create_kernel()
-    # gp_model = exp.create_model(kernel, X_new, Y_new)
-
-    # space = LAW.Design_space(domain)
-    # acq_class = eval("LAW." + exp.acquisition_name)
-    # AF = acq_class(gp_model, space, optimizer=None)
-    # Costs = [D_costs[int(jj)]*ii for (ii,jj) in X_domain_init.tolist()]
-    # Costs = np.array(Costs)
-    # AF2 = AF/Costs
-    # bopt = exp.create_optimizer(ndims=ndims,
-    #                 domain = domain,
-    #                 # acquisition_name =  exp.acquisition_name,
-    #                 # batch_size = exp.batch_size,
-    #                 # law_params = exp.law_params,
-    #                 # kernel = kernel, 
-    #                 optimize_restarts=5
-    #                 )
 #%%
 batch=bopt.compute_batch()
-# D = bopt.create_dict()
-# np.save('./optimizer', D)
 
 ##################### TO SAVE #####################
 D = bopt.__dict__.copy()
@@ -423,82 +318,41 @@ np.save('./optimizer',D)
 ##################### TO LOAD #####################
 
 data = np.load('./optimizer.npy', allow_pickle=True).item()
-# gpmodel = data.pop('gp_model')
-# gp_reg_model = gpmodel.pop('model')
-# GPModel = LAW.GPModel(**gpmodel)
-# GPModel.model = gp_reg_model
+
 search_domain=data['search_domain']
 Costs = data['costs']
 bopt2 = exp.create_LAW_optimizer(search_domain, domain, X_new, Y_new, Costs=Costs, stored_data=data)
 
 
 # %%
-sleep_time = 5
-while True:
-    while exp.runnning == True:
-        sleep(sleep_time)
+# sleep_time = 5
+# while True:
+#     while exp.runnning == True:
+#         sleep(sleep_time)
 
-    data = exp.get_inputs()
-    if data is None:
-        sleep(sleep_time)
-        continue
-    else:
-        X_new, Y_new = data
+#     data = exp.get_inputs()
+#     if data is None:
+#         sleep(sleep_time)
+#         continue
+#     else:
+#         X_new, Y_new = data
 
 
-    # -- Check if there is an optimizer model saved
-    if "optimizer.npy" in os.listdir('./'):
-        data_optimizer = np.load('./optimizer.npy', allow_pickle=True).item()
-        optimizer = LAW.LAW_BOptimizer.model_from_dict(**data_optimizer)
-    # -- If there is no optimizer, create one from scratch: 
-    else:
-        optimizer = exp.create_LAW_optimizer(X_domain_init, domain, Costs=D_costs)
+#     # -- Check if there is an optimizer model saved
+#     if "optimizer.npy" in os.listdir('./'):
+#         data_optimizer = np.load('./optimizer.npy', allow_pickle=True).item()
+#         optimizer = LAW.LAW_BOptimizer.model_from_dict(**data_optimizer)
+#     # -- If there is no optimizer, create one from scratch: 
+#     else:
+#         optimizer = exp.create_LAW_optimizer(X_domain_init, domain, Costs=D_costs)
     
-    # --  Update GPyOpt model with the new data
+#     # --  Update GPyOpt model with the new data
 
 
-    # -- Get and save the batch
-    X_batch = exp.suggest_batch(optimizer)
-    exp.save_batch()
+#     # -- Get and save the batch
+#     X_batch = exp.suggest_batch(optimizer)
+#     exp.save_batch()
 
-    opt_dict = bopt.create_dict()
-    np.save('./optimizer', opt_dict)
+#     opt_dict = bopt.create_dict()
+#     np.save('./optimizer', opt_dict)
 
-
-
-# %%
-# exp = Experiment(
-#                 root_path = "./",
-#                 settings_file = "expsettings.json",
-#                 exp_res_path = "./experiments/"
-#                 )
-# exp.apply_settings()
-
-
-# descriptors = exp.descriptors
-# ndims = len(descriptors[0])
-# GPy_kernel = RBF(input_dim=ndims, ARD=True)
-# kernel = CoulombKernel(input_dim=1, GPy_kern=GPy_kernel.copy(), domain=descriptors)
-
-# %%
-
-#################################  TO SAVE #################################
-# D ={k: bopt.__dict__[k]
-# for k in ['batch_size', 'acquisition_name', 'law_params', 'kernel', 'optimize_restarts']
-# }
-# gm_dict = bopt.model.__dict__
-# if 'kernel'in gm_dict.keys():
-#     del gm_dict ['kernel']
-# D.update({'gp_model':gm_dict})
-# np.save('./Test_dict.npy', D)
-# #################################  LOAD AND CREATE #################################
-
-# data= np.load('./Test_dict.npy',allow_pickle=True).item()
-# gpmodel = data.pop('gp_model')
-# gp_reg_model = gpmodel.pop('model')
-# # gp_reg_model = GPy.models.GPRegression(**gp_reg_dict)
-# from GPyOpt.models import GPModel
-# GPModel = GPModel(**gpmodel)
-# GPModel.model = gp_reg_model
-# new_opt = LAW.LAW_BOptimizer(**data)
-# # new_opt.model=GPModel
