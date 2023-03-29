@@ -88,6 +88,7 @@ class LAW_BOptimizer(object):
 
         self.objective = objective
         self.acquisition = acquisition
+        self.model = acquisition.model
         self.batch_size = batch_size
         self.search_domain = search_domain
         self.costs = Costs
@@ -210,9 +211,10 @@ class LAW_BOptimizer_old(object):
 
     def create_dict(self):
         '''Creates a dictionary to be saved'''
-        D ={k: self.__dict__[k]
-            for k in ['batch_size', 'acquisition_name', 'law_params', 'kernel', 'optimize_restarts']
-            }
+        # D ={k: self.__dict__[k]
+        #     for k in ['batch_size', 'acquisition_name', 'law_params', 'kernel', 'optimize_restarts']
+        #     }
+        D =self.__dict__
         # --clean up: removal the kernel from dictionary necessary to 
         # --rebuild the optimizer from the dictionary D
         gm_dict = self.model.__dict__
