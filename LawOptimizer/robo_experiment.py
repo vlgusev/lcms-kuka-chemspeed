@@ -6,6 +6,7 @@ from itertools import product
 import os 
 import json
 import pandas as pd
+from time import sleep
 from Kernels import *
 import LAW_2_ORDER as LAW
 from Utils import *
@@ -116,10 +117,14 @@ class Experiment(object):
                                 self.descr_path, 
                                 allow_pickle=True
                                 ).item()
+            self.descriptors =  descriptors
+            
         else:
-            all_spieces, nmax, descriptors = read_config(descr_params, file_path = self.config_path)
-            np.save(self.descr_path, descriptors)
-        self.descriptors =  descriptors
+            print('Error: No descriptor file found') 
+            return
+            # all_spieces, nmax, descriptors = read_config(descr_params, file_path = self.config_path)
+            # np.save(self.descr_path, descriptors)
+        # self.descriptors =  descriptors
 
 
     def get_inputs(self, skiprows=0):
@@ -217,7 +222,7 @@ class Experiment(object):
                                 v_lim=v_lim,
                                 weight_func=weight_function
                               )
-        optimizer =LAW.LAW_Evaluator(
+        optimizer =LAW.LAW_BOptimizer(
                                       
                                 batch_size = self.batch_size,
                                 search_domain = search_domain,
@@ -267,18 +272,36 @@ class Experiment(object):
     #     return bopt
 
 
-    def  suggest_batch(self, optimizer):
+    def  suggest_batch(self, optimizer, X_testing=None):
         '''
             Runs optimizer.run_bo
             saves the new file with the last suggested batch.
             Deletes file with last model.
             Saves new model.
         '''
-        # self.num_batch +=1
         # update batch_file_name with updated num_batch
         # batch = bopt.run_opt
         # save batch
-        pass
+        self.runnning = True
+        batch = optimizer.compute_batch(X_testing=X_testing)
+        out = batch[0] if X_testing is None else batch
+        self.num_batch +=1
+        self.runnning = False
+        return out
+
+    def save_batch(self):
+
+        
+        f_name = "PFAS_Dyes-{num:04}.run".format(num=self.num_batch)
+        save_path = os.path.join(exp.exp_res_path, f_name)
+        X_out = np.zeros((len(X_batch), len(columns)-1))
+        for j, x in enumerate(list(X_batch)):
+            ii = int(x[1]); value= x[0]
+            X_out[j,ii]=value
+        # df = pd.DataFrame(columns=columns, data=X_batch)
+        np.savetxt(save_path, X_out, fmt='%.3f', delimiter=',' ,header= ",".join(columns), comments='')
+
+
 
 
 
@@ -341,11 +364,11 @@ if __name__ == "__main__":
     # ndims = len(exp.descriptors)
     ndims = 2
     mol_idxs = list(exp.descriptors.keys())
-    domain = [{'name':'concentration', 'type':'discrete', 'domain':0.1*np.arange(0,11), 'dimensionality':1},
+    domain = [{'name':'concentration', 'type':'discrete', 'domain':0.1*np.arange(1,11), 'dimensionality':1},
               {'name':'mol_id', 'type':'discrete', 'domain':mol_idxs, 'dimensionality':1}]
 
-    search_domain = list(product((0.1*np.arange(0,11)).tolist(), mol_idxs ))
-
+    search_domain = list(product((0.1*np.arange(1,11)).tolist(), mol_idxs ))
+## TO DO load D_costs
     X_new, Y_new=exp.get_inputs()
 
     # -- remove initial inputs from the search space
@@ -369,15 +392,34 @@ if __name__ == "__main__":
     #                 # kernel = kernel, 
     #                 optimize_restarts=5
     #                 )
+        # batch=bopt.compute_batch()
 
-    bopt.compute_batch()
-#%%
+# %%
+sleep_time = 5
+while True:
 
-    # to_remove = list(map(tuple, X_new.tolist()))
-    # search_domain_init=list(set(search_domain) - set(to_remove))
-    # X_domain_init = np.array(search_domain_init)
-    # bopt.create_model(X_new, Y_new, **exp.model_constraints)
+    data = exp.get_inputs()
+    if data is None:
+        sleep(sleep_time)
+        continue
+    else:
+        X_new, Y_new = data
 
+    # -- wait that the optimizer has finished to computing the last batch 
+    while exp.runnning == True:
+        sleep(sleep_time)
+
+    # -- Check if there is an optimizer model saved
+    # TO DO
+    # -- If there is no optimizer, create one from scratch: 
+    # optimizer = exp.create_LAW_optimizer( X_domain_init, domain) 
+    
+    # -- Get the batch
+    X_batch = exp.suggest_batch()
+    exp.save_batch()
+    opt_dict = bopt.create_dict()
+    np.save('./optimizer', opt_dict)
+    # -- save the batch 
 
 
 

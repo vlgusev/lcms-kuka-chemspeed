@@ -68,7 +68,7 @@ class LAW_acq(object):
 
 
 
-class LAW_Evaluator(object):
+class LAW_BOptimizer(object):
     def __init__(
         self,
         batch_size,
@@ -91,6 +91,11 @@ class LAW_Evaluator(object):
         L_obj_val = []
 
         AF = self.acquisition._compute_acq(self.search_domain)
+        #TO DO: Costs array from search_domain---> elementwise AF = AF/Costs
+        # Costs is an array given to this function: default: Costs=None
+        # Costs is attribute of the experiment like descriptors
+
+
         idx = np.argmax(AF)
         X_af =np.atleast_2d(self.search_domain[idx])
         # to_remove = np.where(self.search_domain==X_af)[0]
@@ -116,7 +121,35 @@ class LAW_Evaluator(object):
                 L_obj_val.append(self.objective.compute_value(AF, self.search_domain, X=X_testing))
         return X_batch, L_obj_val
 
-class LAW_BOptimizer(object):
+    @staticmethod
+    def model_from_dict(dict_model):
+        ''' Builds model from loaded file '''
+        
+        gpmodel = dict_model.pop('gp_model')
+        gp_reg_model = gpmodel.pop('model')
+        # gp_reg_model = GPy.models.GPRegression(**gp_reg_dict)
+        GPModel = GPModel(**gpmodel)
+        GPModel.model = gp_reg_model
+        optimizer = LAW_BOptimizer(**dict_model)
+        return  optimizer
+
+    def create_dict(self):
+        '''Creates a dictionary to be saved'''
+        D ={k: self.__dict__[k]
+            for k in ['batch_size', 'acquisition_name', 'law_params', 'kernel', 'optimize_restarts']
+            }
+        # --clean up: removal the kernel from dictionary necessary to 
+        # --rebuild the optimizer from the dictionary D
+        gm_dict = self.model.__dict__
+        if 'kernel'in gm_dict.keys():
+            del gm_dict ['kernel']
+        D.update({'gp_model':gm_dict})
+        return D
+
+
+
+
+class LAW_BOptimizer_old(object):
 
     def  __init__(
                     self,
