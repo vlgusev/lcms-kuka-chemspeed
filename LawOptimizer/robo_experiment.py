@@ -199,7 +199,7 @@ class Experiment(object):
                     gp_model.model.parameters[int(k)].parameters[int(j)].constrain_bounded(*c)
         return gp_model
     
-    def create_LAW_optimizer(self, search_domain, domain):
+    def create_LAW_optimizer(self, search_domain, domain, Costs=None):
         ''' Creates the LAW_optimizer.
             To be used when the experiment has not yet started, and no optimizer 
             model has been saved  yet. 
@@ -229,6 +229,7 @@ class Experiment(object):
                                 acquisition = AF,
                                 objective=LAW_func,
                                 # n_jobs=1,
+                                Costs=Costs,
                                 verbose=False,
                                 )
         return optimizer
@@ -367,8 +368,14 @@ if __name__ == "__main__":
     domain = [{'name':'concentration', 'type':'discrete', 'domain':0.1*np.arange(1,11), 'dimensionality':1},
               {'name':'mol_id', 'type':'discrete', 'domain':mol_idxs, 'dimensionality':1}]
 
-    search_domain = list(product((0.1*np.arange(1,11)).tolist(), mol_idxs ))
-## TO DO load D_costs
+    # search_domain = list(product((0.1*np.arange(1,11)).tolist(), mol_idxs ))
+    search_domain = list(product([0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1. ], mol_idxs))
+
+
+    DF_costs = pd.read_csv('./descriptors/compounds.csv')
+    D_costs =dict(zip(DF_costs['idx'].values.tolist(), 
+                      DF_costs['costs'].values.tolist()))
+
     X_new, Y_new=exp.get_inputs()
 
     # -- remove initial inputs from the search space
@@ -376,14 +383,18 @@ if __name__ == "__main__":
     search_domain_init=list(set(search_domain) - set(to_remove))
     X_domain_init = np.array(search_domain_init)
 
-    bopt =  exp.create_LAW_optimizer( X_domain_init, domain)
+    # bopt =  exp.create_LAW_optimizer( X_domain_init, domain)
+    bopt =  exp.create_LAW_optimizer(X_domain_init, domain, Costs=D_costs)
+
     # kernel = exp.create_kernel()
     # gp_model = exp.create_model(kernel, X_new, Y_new)
 
     # space = LAW.Design_space(domain)
     # acq_class = eval("LAW." + exp.acquisition_name)
     # AF = acq_class(gp_model, space, optimizer=None)
-
+    # Costs = [D_costs[int(jj)]*ii for (ii,jj) in X_domain_init.tolist()]
+    # Costs = np.array(Costs)
+    # AF2 = AF/Costs
     # bopt = exp.create_optimizer(ndims=ndims,
     #                 domain = domain,
     #                 # acquisition_name =  exp.acquisition_name,
@@ -392,7 +403,8 @@ if __name__ == "__main__":
     #                 # kernel = kernel, 
     #                 optimize_restarts=5
     #                 )
-        # batch=bopt.compute_batch()
+#%%
+batch=bopt.compute_batch()
 
 # %%
 sleep_time = 5

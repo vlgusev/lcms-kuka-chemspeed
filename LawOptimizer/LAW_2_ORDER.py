@@ -76,21 +76,31 @@ class LAW_BOptimizer(object):
         acquisition,
         objective=None,
         # n_jobs=1,
+        Costs=None,
         verbose=False,
     ):
-        """acquisition_function: the GPyOpt acqusition function chosen
-        objective: the function to maximize in order to sample points for the batch"""
+        """ acquisition_function: the GPyOpt acqusition function chosen
+            objective: the function to maximize in order to sample points for the batch
+            search_domain: 2D array of all the available combinations [concentration, molecular_id]
+            acquisition: A GPyOpt acquisition function
+            Costs: dictionsry {molecular_id: cost(£/gram)}
+        """
 
         self.objective = objective
         self.acquisition = acquisition
         self.batch_size = batch_size
         self.search_domain = search_domain
+        self.costs = Costs
         self.verbose = verbose
 
     def compute_batch(self, verbose=True, X_testing=None):
         L_obj_val = []
 
         AF = self.acquisition._compute_acq(self.search_domain)
+        if self.costs is not None:
+            Costs = [self.costs[int(jj)]*ii for (ii,jj) in self.search_domain.tolist()]
+            Costs = np.array(Costs).reshape(-1,1)            
+            AF /= Costs
         #TO DO: Costs array from search_domain---> elementwise AF = AF/Costs
         # Costs is an array given to this function: default: Costs=None
         # Costs is attribute of the experiment like descriptors
