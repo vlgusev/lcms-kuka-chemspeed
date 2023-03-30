@@ -21,9 +21,10 @@ class Experiment(object):
     def __init__(self,
                 #  weigth_function_type,
                  root_path = "C:\\ACL_UoL\\LawOptimiser\\",
-                 settings_file = "\\expsettings.json",
-                 descr_path = "./descriptors/descriptors_{}.npy",
-                 exp_res_path = "C:\\ACL_UoL\\LawOptimiser\\experiments"
+                 settings_file = "C:\\ACL_UoL\\LawOptimiser\\expsettings.json",
+                #  descr_path = "./descriptors/descriptors_{}.npy",
+                descr_path = "C:\\ACL_UoL\\LawOptimiser\\descriptors\\descriptors_{}.npy",
+                exp_res_path = "C:\\ACL_UoL\\LawOptimiser\\experiments"
                  
                  ):
         self.root_path = root_path
@@ -230,7 +231,6 @@ class Experiment(object):
                                 search_domain = search_domain,
                                 acquisition = AF,
                                 objective=LAW_func,
-                                # n_jobs=1,
                                 Costs=Costs,
                                 verbose=False,
                                 )
@@ -244,9 +244,6 @@ class Experiment(object):
             Deletes file with last model.
             Saves new model.
         '''
-        # update batch_file_name with updated num_batch
-        # batch = bopt.run_opt
-        # save batch
         self.runnning = True
         batch = optimizer.compute_batch(X_testing=X_testing)
         out = batch[0] if X_testing is None else batch
@@ -258,11 +255,11 @@ class Experiment(object):
 
         f_name = "PFAS_Dyes-{num:04}.run".format(num=self.num_batch)
         save_path = os.path.join(exp.exp_res_path, f_name)
-        X_out = np.zeros((len(X_batch), len(columns)-1))
+        columns = self.compounds
+        X_out = np.zeros((len(X_batch), len(columns)))
         for j, x in enumerate(list(X_batch)):
             ii = int(x[1]); value= x[0]
             X_out[j,ii]=value
-        # df = pd.DataFrame(columns=columns, data=X_batch)
         np.savetxt(save_path, X_out, fmt='%.3f', delimiter=',' ,header= ",".join(columns), comments='')
 
 
@@ -275,10 +272,11 @@ if __name__ == "__main__":
     exp = Experiment(
                     root_path = "./",
                     settings_file = "expsettings.json",
+                    descr_path = "./descriptors/descriptors_{}.npy",
                     exp_res_path = "./experiments/"
                     )
+    
     exp.apply_settings()
-    # ndims = len(exp.descriptors)
     ndims = 2
     mol_idxs = list(exp.descriptors.keys())
     domain = [{'name':'concentration', 'type':'discrete', 'domain':0.1*np.arange(1,11), 'dimensionality':1},
@@ -291,7 +289,7 @@ if __name__ == "__main__":
     DF_costs = pd.read_csv('./descriptors/compounds.csv')
     D_costs =dict(zip(DF_costs['idx'].values.tolist(), 
                       DF_costs['costs'].values.tolist()))
-
+    exp.compounds=DF_costs['names'].values.tolist()
     X_new, Y_new=exp.get_inputs()
 
     # -- remove initial inputs from the search space
@@ -301,58 +299,45 @@ if __name__ == "__main__":
 
     bopt =  exp.create_LAW_optimizer(X_domain_init, domain, X_new, Y_new, Costs=D_costs)
 
-#%%
-batch=bopt.compute_batch()
-
-##################### TO SAVE #####################
-D = bopt.__dict__.copy()
-model = D.pop('model')
-gm_dict = model.__dict__.copy()
-kernel = gm_dict.pop('kernel')
-del D['objective']
-del D['acquisition']
-D.update({'gp_model':gm_dict, 'kernel':kernel})
-np.save('./optimizer',D)
-
-
-##################### TO LOAD #####################
-
-data = np.load('./optimizer.npy', allow_pickle=True).item()
-
-search_domain=data['search_domain']
-Costs = data['costs']
-bopt2 = exp.create_LAW_optimizer(search_domain, domain, X_new, Y_new, Costs=Costs, stored_data=data)
-
 
 # %%
-# sleep_time = 5
-# while True:
-#     while exp.runnning == True:
-#         sleep(sleep_time)
+sleep_time = 5
+# n=0
+while True:
+    # if n >=1:
+    #     break
 
-#     data = exp.get_inputs()
-#     if data is None:
-#         sleep(sleep_time)
-#         continue
-#     else:
-#         X_new, Y_new = data
+    while exp.runnning == True:
+        sleep(sleep_time)
+        print('sleeping')
+        continue
+    data = exp.get_inputs()
+    if data is None:
+        sleep(sleep_time)
+        continue
+    else:
+        X_new, Y_new = data
+
+    print(n)
+    # -- If there is an optimizer model saved the optimizer model is loaded from 
+    # -- file and it is updated with the new data 
+    if "optimizer.npy" in os.listdir('./'):
+        data = np.load('./optimizer.npy', allow_pickle=True).item()
+        search_domain=data['search_domain']
+        Costs = data['costs']
+        optimizer = exp.create_LAW_optimizer(search_domain, domain, X_new, Y_new, Costs=Costs, stored_data=data)
 
 
-#     # -- Check if there is an optimizer model saved
-#     if "optimizer.npy" in os.listdir('./'):
-#         data_optimizer = np.load('./optimizer.npy', allow_pickle=True).item()
-#         optimizer = LAW.LAW_BOptimizer.model_from_dict(**data_optimizer)
-#     # -- If there is no optimizer, create one from scratch: 
-#     else:
-#         optimizer = exp.create_LAW_optimizer(X_domain_init, domain, Costs=D_costs)
+    # -- If there is no optimizer model file, all is created from scratch: 
+    else:
+        optimizer = exp.create_LAW_optimizer(X_domain_init, domain, X_new, Y_new, Costs=Costs)
     
-#     # --  Update GPyOpt model with the new data
+    # -- Get and save the batch
+    X_batch = exp.suggest_batch(optimizer)
+    exp.save_batch()
 
+    opt_dict = bopt.create_dict()
+    np.save('./optimizer', opt_dict)
+    # n+=1
 
-#     # -- Get and save the batch
-#     X_batch = exp.suggest_batch(optimizer)
-#     exp.save_batch()
-
-#     opt_dict = bopt.create_dict()
-#     np.save('./optimizer', opt_dict)
-
+# %%

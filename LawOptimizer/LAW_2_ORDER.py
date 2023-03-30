@@ -129,23 +129,23 @@ class LAW_BOptimizer(object):
     @staticmethod
     def model_from_dict(dict_model):
         ''' Builds model from loaded file '''
-        
-        gpmodel = dict_model.pop('gp_model')
-        gp_reg_model = gpmodel.pop('model')
-        GPModel = GPModel(**gpmodel)
-        GPModel.model = gp_reg_model
+
+        gp_dict = dict_model.pop('gp_model')
+        gp_reg_model = gp_dict.pop('model')
+        gp_model = GPModel(**gp_dict)
+        gp_model.model = gp_reg_model
         optimizer = LAW_BOptimizer(**dict_model)
         return  optimizer
 
     def create_dict(self):
         '''Creates a dictionary to be saved'''
-        D ={k: self.__dict__[k]
-            for k in ['batch_size', 'acquisition_name', 'law_params', 'kernel', 'optimize_restarts']
-            }
-        gm_dict = self.model.__dict__
-        if 'kernel'in gm_dict.keys():
-            del gm_dict ['kernel']
-        D.update({'gp_model':gm_dict})
+        D = self.__dict__.copy()
+        model = D.pop('model')
+        gm_dict = model.__dict__.copy()
+        kernel = gm_dict.pop('kernel')
+        del D['objective']
+        del D['acquisition']
+        D.update({'gp_model':gm_dict, 'kernel':kernel})
         return D
 
 
