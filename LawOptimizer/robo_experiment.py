@@ -287,7 +287,7 @@ if __name__ == "__main__":
 
 
     DF_costs = pd.read_csv(os.path.join(root_path,'costs_compounds.csv'))
-    D_costs =dict(zip(DF_costs['idx'].values.tolist(), 
+    Costs = dict(zip(DF_costs['idx'].values.tolist(), 
                       DF_costs['costs'].values.tolist()))
     exp.compounds=DF_costs['names'].values.tolist()
     X_new, Y_new=exp.get_inputs()
@@ -297,7 +297,7 @@ if __name__ == "__main__":
     search_domain_init=list(set(search_domain) - set(to_remove))
     X_domain_init = np.array(search_domain_init)
 
-    bopt =  exp.create_LAW_optimizer(X_domain_init, domain, X_new, Y_new, Costs=D_costs)
+    bopt =  exp.create_LAW_optimizer(X_domain_init, domain, X_new, Y_new, Costs=Costs)
 
 
 # %%
