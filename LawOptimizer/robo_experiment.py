@@ -24,19 +24,21 @@ class Experiment(object):
                  settings_file = "C:\\ACL_UoL\\LawOptimiser\\expsettings.json",
                 #  descr_path = "./descriptors/descriptors_{}.npy",
                 descr_path = "C:\\ACL_UoL\\LawOptimiser\\descriptors\\descriptors_{}.npy",
-                exp_res_path = "C:\\ACL_UoL\\LawOptimiser\\experiments"
+                exp_res_path = "C:\\ACL_UoL\\LawOptimiser\\experiments",
+                exp_res_file_start = "PFAS_Dyes-res-",
+                batch_file_start = "PFAS_Dyes-batch-"                
                  
                  ):
         self.root_path = root_path
         self.exp_res_path = exp_res_path
-        # self.descr_path = descr_path
+        self.exp_res_file_start = exp_res_file_start
+        self.batch_file_start = batch_file_start
         self.num_batch = 0
         self.runnning = False
         self.acquisition_name = None
         self.kernel_name = None
         self.kern_params = None
         self.batch_size = None
-        # self.weigth_function_type = weigth_function_type
         self.law_params = None
         self.create_directories()
         self.X = None
@@ -120,14 +122,12 @@ class Experiment(object):
         else:
             print('Error: No descriptor file found') 
             return
-            # all_spieces, nmax, descriptors = read_config(descr_params, file_path = self.config_path)
-            # np.save(self.descr_path, descriptors)
-        # self.descriptors =  descriptors
 
 
     def get_inputs(self, skiprows=0):
 
-        exp_files = list(filter(lambda x:"Dyes-res" in x, os.listdir(self.exp_res_path)))
+        exp_files = [f for f in os.listdir(self.exp_res_path) if f.startswith(self.exp_res_file_start)]
+
         new_exp_files=[f for f in exp_files
                        if int(f.rstrip(".run").split("-")[-1]) > self.num_batch]
         if len(new_exp_files) == 0:
@@ -252,9 +252,8 @@ class Experiment(object):
         return out
 
     def save_batch(self):
-
-        f_name = "PFAS_Dyes-{num:04}.run".format(num=self.num_batch)
-        save_path = os.path.join(exp.exp_res_path, f_name)
+        f_name = self.batch_file_start + "{num:04}.run".format(num=self.num_batch)
+        save_path =os.path.join(self.exp_res_path, f_name)   
         columns = self.compounds
         X_out = np.zeros((len(X_batch), len(columns)))
         for j, x in enumerate(list(X_batch)):
@@ -271,22 +270,23 @@ if __name__ == "__main__":
 
     exp = Experiment(
                     root_path = "./",
-                    settings_file = "expsettings.json",
+                    settings_file = "./expsettings.json",
                     descr_path = "./descriptors/descriptors_{}.npy",
-                    exp_res_path = "./experiments/"
+                    exp_res_path = "./experiments/",
                     )
     
+
     exp.apply_settings()
+    root_path = exp.root_path
     ndims = 2
     mol_idxs = list(exp.descriptors.keys())
     domain = [{'name':'concentration', 'type':'discrete', 'domain':0.1*np.arange(1,11), 'dimensionality':1},
               {'name':'mol_id', 'type':'discrete', 'domain':mol_idxs, 'dimensionality':1}]
 
-    # search_domain = list(product((0.1*np.arange(1,11)).tolist(), mol_idxs ))
     search_domain = list(product([0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1. ], mol_idxs))
 
 
-    DF_costs = pd.read_csv('./descriptors/compounds.csv')
+    DF_costs = pd.read_csv(os.path.join(root_path,'costs_compounds.csv'))
     D_costs =dict(zip(DF_costs['idx'].values.tolist(), 
                       DF_costs['costs'].values.tolist()))
     exp.compounds=DF_costs['names'].values.tolist()
@@ -302,10 +302,10 @@ if __name__ == "__main__":
 
 # %%
 sleep_time = 5
-# n=0
+n=0
 while True:
-    # if n >=1:
-    #     break
+    if n >=1:
+        break
 
     while exp.runnning == True:
         sleep(sleep_time)
@@ -318,11 +318,12 @@ while True:
     else:
         X_new, Y_new = data
 
-    print(n)
     # -- If there is an optimizer model saved the optimizer model is loaded from 
     # -- file and it is updated with the new data 
-    if "optimizer.npy" in os.listdir('./'):
-        data = np.load('./optimizer.npy', allow_pickle=True).item()
+    if "optimizer.npy" in os.listdir(root_path):
+
+
+        data = np.load(os.path.join(root_path,'optimizer.npy'), allow_pickle=True).item()
         search_domain=data['search_domain']
         Costs = data['costs']
         optimizer = exp.create_LAW_optimizer(search_domain, domain, X_new, Y_new, Costs=Costs, stored_data=data)
@@ -337,7 +338,7 @@ while True:
     exp.save_batch()
 
     opt_dict = bopt.create_dict()
-    np.save('./optimizer', opt_dict)
-    # n+=1
+    np.save(os.path.join(root_path,'optimizer'), opt_dict)
+    n+=1
 
 # %%
