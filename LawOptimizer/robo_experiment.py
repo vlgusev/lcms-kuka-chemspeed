@@ -9,7 +9,7 @@ import pandas as pd
 from time import sleep
 from Kernels import *
 import LAW_2_ORDER as LAW
-from Utils import *
+# from Utils import *
 
 
 
@@ -166,11 +166,14 @@ class Experiment(object):
         if self.kernel_name == "CoulombKernel":
             GPy_kernel = RBF(input_dim=descr_dim, ARD=True)
             kernel = CoulombKernel(input_dim=ndims, GPy_kern=GPy_kernel.copy(), domain=self.descriptors)
-        elif self.kernel_name ==  "REMatch":
-            kernel = GPyREMatchKern(domain=domain)
-            if self.kern_params is not None:
-                for k, p in  self.kern_params.items():
-                    setattr(kernel,k,p)
+        else:
+            raise ValueError("Only CoulombKernel is implemented at the moment")
+
+        # elif self.kernel_name ==  "REMatch":
+        #     kernel = GPyREMatchKern(domain=domain)
+        #     if self.kern_params is not None:
+        #         for k, p in  self.kern_params.items():
+        #             setattr(kernel,k,p)
         return kernel
     
     def create_model(self, kernel, X, Y, optimize_restarts=5):
