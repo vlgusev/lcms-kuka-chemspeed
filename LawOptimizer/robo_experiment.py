@@ -250,11 +250,15 @@ class Experiment(object):
     def save_batch(self):
         f_name = self.batch_file_start + "{num:04}.run".format(num=self.num_batch)
         save_path =os.path.join(self.exp_res_path, f_name)   
-        columns = self.compounds
+        columns = ['SampleIndex']
+        columns.extend(self.compounds)  
         X_out = np.zeros((len(X_batch), len(columns)))
         for j, x in enumerate(list(X_batch)):
             ii = int(x[1]); value= x[0]
             X_out[j,ii]=value
+        sample_idxs = (self.num_batch * np.arange(1,17)).reshape(-1,1)
+
+        X_out = np.hstack([sample_idxs, X_out])
         np.savetxt(save_path, X_out, fmt='%.3f', delimiter=',' ,header= ",".join(columns), comments='')
 
 
@@ -300,8 +304,6 @@ if __name__ == "__main__":
 sleep_time = 5
 n=0
 while True:
-    if n >=1:
-        break
 
     while exp.runnning == True:
         sleep(sleep_time)
@@ -338,3 +340,4 @@ while True:
     n+=1
 
 # %%
+exp.save_batch()
