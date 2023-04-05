@@ -247,7 +247,7 @@ class Experiment(object):
         self.runnning = False
         return out
 
-    def save_batch(self):
+    def save_batch(self, X_batch):
         f_name = self.batch_file_start + "{num:04}.run".format(num=self.num_batch)
         save_path =os.path.join(self.exp_res_path, f_name)   
         columns = ['SampleIndex']
@@ -256,8 +256,9 @@ class Experiment(object):
         for j, x in enumerate(list(X_batch)):
             ii = int(x[1]); value= x[0]
             X_out[j,ii]=value
-        sample_idxs = (self.num_batch * np.arange(1,17)).reshape(-1,1)
-
+        # sample_idxs = (self.num_batch * np.arange(1,17)).reshape(-1,1)
+        sample_idxs = (np.arange(1,17) + self.batch_size*(self.num_batch-1)).reshape(-1,1)
+                        
         X_out = np.hstack([sample_idxs, X_out])
         np.savetxt(save_path, X_out, fmt='%.3f', delimiter=',' ,header= ",".join(columns), comments='')
 
@@ -339,5 +340,5 @@ while True:
     np.save(os.path.join(root_path,'optimizer'), opt_dict)
     n+=1
 
+
 # %%
-exp.save_batch()
