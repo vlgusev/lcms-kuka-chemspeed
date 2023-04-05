@@ -248,7 +248,8 @@ class Experiment(object):
         return out
 
     def save_batch(self, X_batch):
-        f_name = self.batch_file_start + "{num:04}.run".format(num=self.num_batch)
+        # f_name = self.batch_file_start + "{num:04}.run".format(num=self.num_batch)
+        f_name = self.batch_file_start + "{num}.run".format(num=self.num_batch)
         save_path =os.path.join(self.exp_res_path, f_name)   
         columns = ['SampleIndex']
         columns.extend(self.compounds)  
