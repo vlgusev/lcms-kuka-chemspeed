@@ -334,7 +334,7 @@ while True:
     
     # -- Get and save the batch
     X_batch = exp.suggest_batch(optimizer)
-    exp.save_batch()
+    exp.save_batch(X_batch)
 
     opt_dict = bopt.create_dict()
     np.save(os.path.join(root_path,'optimizer'), opt_dict)
