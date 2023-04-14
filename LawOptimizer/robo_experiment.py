@@ -9,19 +9,48 @@ import pandas as pd
 from time import sleep
 from Kernels import *
 import LAW_2_ORDER as LAW
-
+import GPyOpt
+import GPy
 
 
 # %%
 
+class Chem_GPModel(GPyOpt.models.GPModel):
+
+    def __init__(self, kernel, noise_var=None, exact_feval=False, optimizer='bfgs', max_iters=1000, optimize_restarts=5, 
+                 sparse=False, num_inducing=10, verbose=False, ARD=False, mean_function=None, Gauss_noise_lim = None):
+        super().__init__(kernel=kernel, noise_var=noise_var, exact_feval=exact_feval, optimizer=optimizer, 
+                         max_iters=max_iters, optimize_restarts=optimize_restarts, sparse=sparse, 
+                         num_inducing=num_inducing, verbose=verbose, ARD=ARD, mean_function=mean_function)
+        self.Gauss_noise_lim =  Gauss_noise_lim
+        
+
+    def _create_model(self, X, Y):
+
+        kern = self.kernel
+        self.kernel = None
+        noise_lim  = self.Gauss_noise_lim
+        if not self.sparse:
+            self.model = GPy.models.GPRegression(X, Y, kernel=kern, mean_function=self.mean_function)
+        else:
+            self.model = GPy.models.SparseGPRegression(X, Y, kernel=kern, num_inducing=self.num_inducing, mean_function=self.mean_function)
+        if self.Gauss_noise_lim is not None and len(noise_lim) ==1:
+            self.model.Gaussian_noise.variance.constrain_fixed(noise_lim, warning=False)
+        elif self.Gauss_noise_lim is not None and len(noise_lim) ==2:
+            self.model.Gaussian_noise.variance.constrain_bounded(*noise_lim, warning=False)
+
+
+
+
+
+
+#%%
 class Experiment(object):
 
 
     def __init__(self,
-                #  weigth_function_type,
                  root_path = "C:\\ACL_UoL\\LawOptimiser\\",
                  settings_file = "C:\\ACL_UoL\\LawOptimiser\\expsettings.json",
-                #  descr_path = "./descriptors/descriptors_{}.npy",
                 descr_path = "C:\\ACL_UoL\\LawOptimiser\\descriptors\\descriptors_{}.npy",
                 exp_res_path = "C:\\ACL_UoL\\LawOptimiser\\experiments",
                 exp_res_file_start = "PFAS_Dyes-res-",
@@ -160,11 +189,13 @@ class Experiment(object):
     def create_kernel(self):
         ''' '''
         descr_dim = len(self.descriptors[0]) # dimensionality of the descriptors
+        descr_dim = (self.descriptors[0]).shape[1] # dimensionality of the descriptors
         
+        print('descriptors dimension:', descr_dim)
         # --  Creating the kernel 
         if self.kernel_name == "CoulombKernel":
             GPy_kernel = RBF(input_dim=descr_dim, ARD=True)
-            kernel = CoulombKernel(input_dim=ndims, GPy_kern=GPy_kernel.copy(), domain=self.descriptors)
+            kernel = CoulombKernel(input_dim=ndims, GPy_kern=GPy_kernel, domain=self.descriptors)
         else:
             raise ValueError("Only CoulombKernel is implemented at the moment")
         return kernel
@@ -173,9 +204,11 @@ class Experiment(object):
         ''' '''
         kernel = kernel.copy()
         noise_var = np.std(Y)*0.001
-        gp_model = LAW.GPModel(kernel, optimize_restarts=optimize_restarts)
+        gp_model = LAW.GPModel(kernel, optimize_restarts=optimize_restarts, ARD=True)
         gp_model.model = LAW.GPRegression(X, Y, kernel=kernel, noise_var=noise_var)
-
+        # gp_model = Chem_GPModel(kernel, ARD=True)
+        # gp_model._create_model(X,Y)
+        # print(gp_model.model)
         # --  setting the gp model contraints
         constraints = self.model_constraints
         for k in  constraints.keys():
@@ -205,6 +238,7 @@ class Experiment(object):
             gp_dict = stored_data.pop('gp_model')
             gp_reg_model = gp_dict.pop('model')
             gp_model = LAW.GPModel(**gp_dict)
+            # gp_model = Chem_GPModel(**gp_dict)
             gp_model.model = gp_reg_model
             X= gp_reg_model.X.copy()
             Y= gp_reg_model.Y.copy()
@@ -237,10 +271,7 @@ class Experiment(object):
 
         ii=np.random.choice(range(len(search_domain)), self.batch_size, replace=False)
         selected_exp = np.array(search_domain)[ii]
-        # self.num_batch = 1
         self.save_batch(selected_exp)
-        # self.num_batch = 1
-        # concs_init=selected_exp[:,0]        
         return selected_exp
 
 
@@ -258,19 +289,14 @@ class Experiment(object):
         self.runnning = False
         return out
 
-    def save_batch(self, X_batch, out_file_name = None):
+    def save_batch(self, X_batch):
         ''' 
             Saves the suggested batch to file.
-            out_file_name: optional: a different name to save the batch to file.
-            It is used only to save the initial batch.
         '''
         print('batch num: ',self.num_batch)
-        # f_name = self.batch_file_start + "{num:04}.run".format(num=self.num_batch)
-        # f_name = self.batch_file_start + "{num}.run".format(num=self.num_batch)
-        if out_file_name is None:
-            f_name = self.batch_file_start + "{num}.run".format(num=self.num_batch)
-        else:
-            f_name = out_file_name
+        f_name = self.batch_file_start + "{num}.run".format(num=self.num_batch)
+        # else:
+        #     f_name = out_file_name
         save_path =os.path.join(self.exp_res_path, f_name)   
         columns = ['SampleIndex']
         columns.extend(self.compounds)  
@@ -280,9 +306,7 @@ class Experiment(object):
             ii = int(x[1]); value= x[0]
             X_out[j,ii]=value
             X_out[j,-1]=1-value
-        # sample_idxs = (self.num_batch * np.arange(1,17)).reshape(-1,1)
         sample_idxs = (np.arange(1,17) + self.batch_size*(self.num_batch-1)).reshape(-1,1)
-                        
         X_out = np.hstack([sample_idxs, X_out])
         np.savetxt(save_path, X_out, fmt='%.3f', delimiter=',' ,header= ",".join(columns), comments='')
 
@@ -315,7 +339,7 @@ if __name__ == "__main__":
     Costs = dict(zip(DF_costs['idx'].values.tolist(), 
                       DF_costs['costs'].values.tolist()))
     exp.compounds=DF_costs['names'].values.tolist()
-    # X_new, Y_new=exp.get_inputs()
+
     X_init = exp.create_initial_batch(search_domain)
     # -- remove initial inputs from the search space
     to_remove = list(map(tuple, X_init.tolist()))
@@ -325,52 +349,45 @@ if __name__ == "__main__":
     # bopt =  exp.create_LAW_optimizer(X_domain_init, domain, X_new, Y_new, Costs=Costs)
 
 
-# %%
-sleep_time = 5
-n=0
-while True:
+    sleep_time = 5
+    n=0
+    while True:
 
-    while exp.runnning == True:
-        sleep(sleep_time)
-        print('optimizer running')
-        continue
-    data = exp.get_inputs()
-    if data is None:
-        sleep(sleep_time)
-        continue
-    else:
-        X_new, Y_new = data
-    #  if no experimental results have been stored, this means the optimizer cannot have been created: create one
-    if exp.Y is None: 
-        bopt =  exp.create_LAW_optimizer(X_domain_init, domain, X_new, Y_new, Costs=Costs)
+        while exp.runnning == True:
+            sleep(sleep_time)
+            print('optimizer running')
+            continue
+        data = exp.get_inputs()
+        if data is None:
+            sleep(sleep_time)
+            continue
+        else:
+            X_new, Y_new = data
+        #  if no experimental results have been stored, this means the optimizer cannot have been created: create one
+        if exp.Y is None: 
+            bopt =  exp.create_LAW_optimizer(X_domain_init, domain, X_new, Y_new, Costs=Costs)
 
-    # -- If there is an optimizer model saved the optimizer model is loaded from 
-    # -- file and it is updated with the new data 
-    if "optimizer.npy" in os.listdir(root_path):
-
-
-        data = np.load(os.path.join(root_path,'optimizer.npy'), allow_pickle=True).item()
-        search_domain=data['search_domain']
-        Costs = data['costs']
-        optimizer = exp.create_LAW_optimizer(search_domain, domain, X_new, Y_new, Costs=Costs, stored_data=data)
+        # -- If there is an optimizer model saved the optimizer model is loaded from 
+        # -- file and it is updated with the new data 
+        if "optimizer.npy" in os.listdir(root_path):
 
 
-    # -- If there is no optimizer model file, all is created from scratch: 
-    else:
-        optimizer = exp.create_LAW_optimizer(X_domain_init, domain, X_new, Y_new, Costs=Costs)
-    
-    # -- Get and save the batch
-    X_batch = exp.suggest_batch(optimizer)
-    exp.save_batch(X_batch)
-
-    opt_dict = bopt.create_dict()
-    np.save(os.path.join(root_path,'optimizer'), opt_dict)
-    n+=1
+            data = np.load(os.path.join(root_path,'optimizer.npy'), allow_pickle=True).item()
+            search_domain=data['search_domain']
+            Costs = data['costs']
+            optimizer = exp.create_LAW_optimizer(search_domain, domain, X_new, Y_new, Costs=Costs, stored_data=data)
 
 
-# %%
-# ii=np.random.choice(range(len(search_domain)), 16, replace=False)
-# XX_init= np.array(search_domain)[ii]
-# concs_init=XX_init[:,0]
-# water_conc_init= 1-concs_init
-# water_conc_init
+        # -- If there is no optimizer model file, all is created from scratch: 
+        else:
+            optimizer = exp.create_LAW_optimizer(X_domain_init, domain, X_new, Y_new, Costs=Costs)
+        
+        # -- Get and save the batch
+        X_batch = exp.suggest_batch(optimizer)
+        exp.save_batch(X_batch)
+
+        opt_dict = bopt.create_dict()
+        np.save(os.path.join(root_path,'optimizer'), opt_dict)
+        n+=1
+
+
