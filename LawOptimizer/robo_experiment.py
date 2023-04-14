@@ -229,8 +229,19 @@ class Experiment(object):
                                 objective=LAW_func,
                                 Costs=Costs,
                                 verbose=False,
-                                )
+                                ) 
         return optimizer
+
+    def create_initial_batch(self, search_domain):
+        ''' Creates initial suggested experiment to run an saves it to file'''
+
+        ii=np.random.choice(range(len(search_domain)), self.batch_size, replace=False)
+        selected_exp = np.array(search_domain)[ii]
+        # self.num_batch = 1
+        self.save_batch(selected_exp)
+        # self.num_batch = 1
+        # concs_init=selected_exp[:,0]        
+        return selected_exp
 
 
     def  suggest_batch(self, optimizer, X_testing=None):
@@ -247,16 +258,28 @@ class Experiment(object):
         self.runnning = False
         return out
 
-    def save_batch(self, X_batch):
+    def save_batch(self, X_batch, out_file_name = None):
+        ''' 
+            Saves the suggested batch to file.
+            out_file_name: optional: a different name to save the batch to file.
+            It is used only to save the initial batch.
+        '''
+        print('batch num: ',self.num_batch)
         # f_name = self.batch_file_start + "{num:04}.run".format(num=self.num_batch)
-        f_name = self.batch_file_start + "{num}.run".format(num=self.num_batch)
+        # f_name = self.batch_file_start + "{num}.run".format(num=self.num_batch)
+        if out_file_name is None:
+            f_name = self.batch_file_start + "{num}.run".format(num=self.num_batch)
+        else:
+            f_name = out_file_name
         save_path =os.path.join(self.exp_res_path, f_name)   
         columns = ['SampleIndex']
         columns.extend(self.compounds)  
+        columns.append('Water')
         X_out = np.zeros((len(X_batch), len(columns)))
         for j, x in enumerate(list(X_batch)):
             ii = int(x[1]); value= x[0]
             X_out[j,ii]=value
+            X_out[j,-1]=1-value
         # sample_idxs = (self.num_batch * np.arange(1,17)).reshape(-1,1)
         sample_idxs = (np.arange(1,17) + self.batch_size*(self.num_batch-1)).reshape(-1,1)
                         
@@ -285,21 +308,21 @@ if __name__ == "__main__":
     domain = [{'name':'concentration', 'type':'discrete', 'domain':0.1*np.arange(1,11), 'dimensionality':1},
               {'name':'mol_id', 'type':'discrete', 'domain':mol_idxs, 'dimensionality':1}]
 
-    search_domain = list(product([0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1. ], mol_idxs))
+    search_domain = list(product([0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9], mol_idxs))
 
 
     DF_costs = pd.read_csv(os.path.join(root_path,'costs_compounds.csv'))
     Costs = dict(zip(DF_costs['idx'].values.tolist(), 
                       DF_costs['costs'].values.tolist()))
     exp.compounds=DF_costs['names'].values.tolist()
-    X_new, Y_new=exp.get_inputs()
-
+    # X_new, Y_new=exp.get_inputs()
+    X_init = exp.create_initial_batch(search_domain)
     # -- remove initial inputs from the search space
-    to_remove = list(map(tuple, X_new.tolist()))
+    to_remove = list(map(tuple, X_init.tolist()))
     search_domain_init=list(set(search_domain) - set(to_remove))
     X_domain_init = np.array(search_domain_init)
 
-    bopt =  exp.create_LAW_optimizer(X_domain_init, domain, X_new, Y_new, Costs=Costs)
+    # bopt =  exp.create_LAW_optimizer(X_domain_init, domain, X_new, Y_new, Costs=Costs)
 
 
 # %%
@@ -309,7 +332,7 @@ while True:
 
     while exp.runnning == True:
         sleep(sleep_time)
-        print('sleeping')
+        print('optimizer running')
         continue
     data = exp.get_inputs()
     if data is None:
@@ -317,6 +340,9 @@ while True:
         continue
     else:
         X_new, Y_new = data
+    #  if no experimental results have been stored, this means the optimizer cannot have been created: create one
+    if exp.Y is None: 
+        bopt =  exp.create_LAW_optimizer(X_domain_init, domain, X_new, Y_new, Costs=Costs)
 
     # -- If there is an optimizer model saved the optimizer model is loaded from 
     # -- file and it is updated with the new data 
@@ -343,3 +369,8 @@ while True:
 
 
 # %%
+# ii=np.random.choice(range(len(search_domain)), 16, replace=False)
+# XX_init= np.array(search_domain)[ii]
+# concs_init=XX_init[:,0]
+# water_conc_init= 1-concs_init
+# water_conc_init
