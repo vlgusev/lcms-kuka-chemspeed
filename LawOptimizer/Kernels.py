@@ -16,9 +16,9 @@ class CoulombKernel(Kern):
     '''
 
     def __init__(self, input_dim, GPy_kern=None, domain=None, seed = None, active_dims=None, useGPU=False, *args, **options):
-        super().__init__(input_dim, active_dims, useGPU=useGPU, name="Coulomb", *args, **options)
+        super(CoulombKernel, self).__init__(input_dim, active_dims,name='rbf', useGPU=useGPU,  *args, **options)
 
-        self._name = "CoulombKernel"
+        self._name = 'Coulomb'
         self.kernel = GPy_kern
         self.domain =domain
         self.variance=self.kernel.variance
@@ -37,6 +37,8 @@ class CoulombKernel(Kern):
         idxs = X[:,1].tolist()
         concs = X[:,0].reshape(-1,1)
         D = [self.domain[int(j)] for j in idxs]
+        # print('THIS IS THE LENGTH OF D: ', len(D))
+        print('THIS IS THE LENGTH OF idxs: ', len(idxs))
         D = np.vstack(D)
         mols = np.hstack([concs, D])
         return mols
