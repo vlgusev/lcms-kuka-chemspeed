@@ -77,7 +77,7 @@ class LAW_BOptimizer(object):
         acquisition,
         objective=None,
         # n_jobs=1,
-        Costs=None,
+        costs=None,
         verbose=False,
     ):
         """ acquisition_function: the GPyOpt acqusition function chosen
@@ -92,7 +92,7 @@ class LAW_BOptimizer(object):
         self.model = acquisition.model
         self.batch_size = batch_size
         self.search_domain = search_domain
-        self.costs = Costs
+        self.costs = costs
         self.verbose = verbose
 
     def compute_batch(self, verbose=True, X_testing=None):
@@ -125,19 +125,34 @@ class LAW_BOptimizer(object):
             if X_testing is not None:
                 L_obj_val.append(self.objective.compute_value(AF, self.search_domain, X=X_testing))
         return X_batch, L_obj_val
+    
+    def update_gpmodel(self, X_new, Y_new):
+        
+        X=self.acquisition.model.model.X.copy()
+        Y=self.acquisition.model.model.Y.copy()
+        X1, Y1 = np.vstack([X,X_new]), np.vstack([Y,Y_new])
+        self.acquisition.model.model.set_XY(X1,Y1)
+        self.acquisition.model.model.optimize()
+
+
+
+
+
 
     @staticmethod
     def model_from_dict(dict_model):
         ''' Builds model from loaded file '''
 
-        gp_dict = dict_model.pop('gp_model')
+        # gp_dict = dict_model.pop('gp_model')
+        gp_dict = dict_model['gp_model']
         gp_reg_model = gp_dict.pop('model')
         gp_model = GPModel(**gp_dict)
         gp_model.model = gp_reg_model
-        optimizer = LAW_BOptimizer(**dict_model)
-        return  optimizer
+        # optimizer = LAW_BOptimizer(**dict_model)
+        # return  optimizer
+        return gp_model
 
-    def create_dict(self):
+    def create_model_dict(self):
         '''Creates a dictionary to be saved'''
         D = self.__dict__.copy()
         model = D.pop('model')
@@ -145,7 +160,8 @@ class LAW_BOptimizer(object):
         kernel = gm_dict.pop('kernel')
         del D['objective']
         del D['acquisition']
-        D.update({'gp_model':gm_dict, 'kernel':kernel})
+        # D.update({'gp_model':gm_dict, 'kernel':kernel})
+        D.update({'gp_model':gm_dict})
         return D
 
 

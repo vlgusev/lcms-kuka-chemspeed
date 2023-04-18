@@ -219,7 +219,7 @@ class Experiment(object):
                     gp_model.model.parameters[int(k)].parameters[int(j)].constrain_bounded(*c)
         return gp_model
     
-    def create_LAW_optimizer(self, search_domain, domain,X_new, Y_new, Costs=None, stored_data = None):
+    def create_LAW_optimizer(self, search_domain, domain,X_new, Y_new, costs=None, stored_data = None):
         ''' Creates the LAW_optimizer.
             To be used when the experiment has not yet started, and no optimizer 
             model has been saved  yet. 
@@ -235,16 +235,16 @@ class Experiment(object):
             kernel = self.create_kernel()
             gp_model =self.create_model(kernel.copy(), X_new, Y_new)
         else:
-            gp_dict = stored_data.pop('gp_model')
-            gp_reg_model = gp_dict.pop('model')
-            gp_model = LAW.GPModel(**gp_dict)
-            # gp_model = Chem_GPModel(**gp_dict)
-            gp_model.model = gp_reg_model
-            X= gp_reg_model.X.copy()
-            Y= gp_reg_model.Y.copy()
-            X_all, Y_all = np.vstack([X,X_new]), np.vstack([Y,Y_new])
-            gp_model.model.set_XY(X_all, Y_all)
-        
+            # gp_dict = stored_data.pop('gp_model')
+            # gp_reg_model = gp_dict.pop('model')
+            # gp_model = LAW.GPModel(**gp_dict)
+            # # gp_model = Chem_GPModel(**gp_dict)
+            # gp_model.model = gp_reg_model
+            # X= gp_reg_model.X.copy()
+            # Y= gp_reg_model.Y.copy()
+            # X_all, Y_all = np.vstack([X,X_new]), np.vstack([Y,Y_new])
+            # gp_model.model.set_XY(X_all, Y_all)
+            gp_model= LAW.LAW_BOptimizer.model_from_dict(data)
         gp_model.model.optimize()
         space = LAW.Design_space(domain)
         acq_class = eval("LAW." + exp.acquisition_name)
@@ -254,16 +254,18 @@ class Experiment(object):
                                 model=gp_model,
                                 v_lim=v_lim,
                                 weight_func=weight_function
-                              )
+                            )
         optimizer =LAW.LAW_BOptimizer(
-                                      
+                                    
                                 batch_size = self.batch_size,
                                 search_domain = search_domain,
                                 acquisition = AF,
                                 objective=LAW_func,
-                                Costs=Costs,
+                                costs=costs,
                                 verbose=False,
                                 ) 
+        # else:
+        #     optimizer = LAW.LAW_BOptimizer.model_from_dict(data)
         return optimizer
 
     def create_initial_batch(self, search_domain):
@@ -336,7 +338,7 @@ if __name__ == "__main__":
 
 
     DF_costs = pd.read_csv(os.path.join(root_path,'costs_compounds.csv'))
-    Costs = dict(zip(DF_costs['idx'].values.tolist(), 
+    costs = dict(zip(DF_costs['idx'].values.tolist(), 
                       DF_costs['costs'].values.tolist()))
     exp.compounds=DF_costs['names'].values.tolist()
 
@@ -346,48 +348,70 @@ if __name__ == "__main__":
     search_domain_init=list(set(search_domain) - set(to_remove))
     X_domain_init = np.array(search_domain_init)
 
-    # bopt =  exp.create_LAW_optimizer(X_domain_init, domain, X_new, Y_new, Costs=Costs)
+    # optimizer =  exp.create_LAW_optimizer(X_domain_init, domain, X_new, Y_new, costs=costs)
+#%%
+sleep_time = 5
+n=0
+while True:
+
+    while exp.runnning == True:
+        sleep(sleep_time)
+        print('optimizer running')
+        continue
+    data = exp.get_inputs()
+    if data is None:
+        sleep(sleep_time)
+        continue
+    else:
+        X_new, Y_new = data
+    #  if no experimental results have been stored, this means the optimizer cannot have been created: create one
+    if exp.Y is None: 
+        optimizer =  exp.create_LAW_optimizer(X_domain_init, domain, X_new, Y_new, costs=costs)
+
+    # -- If there is an optimizer model saved the optimizer model is loaded from 
+    # -- file and it is updated with the new data 
+    if "optimizer.npy" in os.listdir(root_path):
 
 
-    sleep_time = 5
-    n=0
-    while True:
-
-        while exp.runnning == True:
-            sleep(sleep_time)
-            print('optimizer running')
-            continue
-        data = exp.get_inputs()
-        if data is None:
-            sleep(sleep_time)
-            continue
-        else:
-            X_new, Y_new = data
-        #  if no experimental results have been stored, this means the optimizer cannot have been created: create one
-        if exp.Y is None: 
-            bopt =  exp.create_LAW_optimizer(X_domain_init, domain, X_new, Y_new, Costs=Costs)
-
-        # -- If there is an optimizer model saved the optimizer model is loaded from 
-        # -- file and it is updated with the new data 
-        if "optimizer.npy" in os.listdir(root_path):
+        data = np.load(os.path.join(root_path,'optimizer.npy'), allow_pickle=True).item()
+        search_domain=data['search_domain']
+        costs = data['costs']
+        optimizer = exp.create_LAW_optimizer(search_domain, domain, X_new, Y_new, costs=costs, stored_data=data)
 
 
-            data = np.load(os.path.join(root_path,'optimizer.npy'), allow_pickle=True).item()
-            search_domain=data['search_domain']
-            Costs = data['costs']
-            optimizer = exp.create_LAW_optimizer(search_domain, domain, X_new, Y_new, Costs=Costs, stored_data=data)
+    # -- If there is no optimizer model file, all is created from scratch: 
+    else:
+        optimizer = exp.create_LAW_optimizer(X_domain_init, domain, X_new, Y_new, costs=costs)
+    
+    # -- Get and save the batch
+    X_batch = exp.suggest_batch(optimizer)
+    # optimizer.update_gpmodel(X_new, Y_new)
+    exp.save_batch(X_batch)
+    # opt_dict = optimizer.create_dict()
+    model_dict= optimizer.create_model_dict()
+    print(len(optimizer.acquisition.model.model.X))
+    np.save(os.path.join(root_path,'optimizer'), model_dict)
+    n+=1
+
+# %%
+# rec_opt=np.load('./test_opt.npy',allow_pickle=True).item()
+# rec_opt.keys()
+
+X_new, Y_new = exp.get_inputs()
+test_opt =  exp.create_LAW_optimizer(X_domain_init, domain, X_new, Y_new, costs=costs)
+D = test_opt.acquisition.model.__dict__
+CoulKern = D['kernel']
+params =CoulKern.param_array
+GPyKern_dict = CoulKern.kernel.__dict__
+# ddict = CoulKern.kernel._save_to_input_dict()
+ddict = CoulKern.kernel.to_dict()
+# GPyKern_test = RBF(**ddict)
+GPyKern_test = RBF.from_dict(**ddict)
 
 
-        # -- If there is no optimizer model file, all is created from scratch: 
-        else:
-            optimizer = exp.create_LAW_optimizer(X_domain_init, domain, X_new, Y_new, Costs=Costs)
-        
-        # -- Get and save the batch
-        X_batch = exp.suggest_batch(optimizer)
-        exp.save_batch(X_batch)
-
-        opt_dict = bopt.create_dict()
-        np.save(os.path.join(root_path,'optimizer'), opt_dict)
-        n+=1
 
 
+
+
+
+# %%
