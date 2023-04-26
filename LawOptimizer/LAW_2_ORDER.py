@@ -26,12 +26,17 @@ class LAW_acq(object):
         kernel = self.model.model.kern
         if noise is None:
             noise = self.model.model.parameters[1].param_array
+        # if len(x==0):
+        # print('shape X at compute_variance: ', x.shape)
+            # return -999
+    
         Kxx = kernel.K(x, x)
         KxX = kernel.K(x, X)
         KXX = kernel.K(X, X)
         W = KXX + noise * np.eye(len(X))
         W_inv = cho_solve(cho_factor(W), np.eye(len(W)))
         temp = (KxX.dot(W_inv)).dot(KxX.T)
+
         return Kxx - temp
 
     def compute_value(self, AF, x, X=None):
@@ -43,6 +48,8 @@ class LAW_acq(object):
         Gauss_noise = self.model.model.parameters[1].param_array
         N = len(x) // var_size
         p = len(x) % var_size
+        # if self.compute_variance(X, np.atleast_2d(x))==-999:
+        #     return -999
         if N == 0:
             var = np.diag(self.compute_variance(X, np.atleast_2d(x), noise=Gauss_noise))
             var = var.reshape(-1, 1)
@@ -96,8 +103,8 @@ class LAW_BOptimizer(object):
         self.verbose = verbose
 
     def compute_batch(self, verbose=True, X_testing=None):
+        # print(len(self.search_domain))
         L_obj_val = []
-
         AF = self.acquisition._compute_acq(self.search_domain)
         if self.costs is not None:
             Costs = [self.costs[int(jj)]*ii for (ii,jj) in self.search_domain.tolist()]
@@ -111,8 +118,14 @@ class LAW_BOptimizer(object):
 
         X_batch = X_af
         for j in range(1, self.batch_size):
+            # print(len(self.search_domain))
+
             AF = np.delete(AF, idx).reshape(-1,1)
-            LAW = self.objective.compute_value(AF, self.search_domain, X=X_batch) 
+            try:
+                LAW = self.objective.compute_value(AF, self.search_domain, X=X_batch) 
+            except:
+                print('compute_batch stopped at step: ', j)
+                print('X_batch shape: ', X_batch.shape)
             idx = np.argmax(LAW)
             new_sample = np.atleast_2d(self.search_domain[idx])
             to_remove = np.where((self.search_domain==new_sample).all(axis=1))
@@ -124,6 +137,7 @@ class LAW_BOptimizer(object):
             X_batch = np.vstack([X_batch, new_sample])
             if X_testing is not None:
                 L_obj_val.append(self.objective.compute_value(AF, self.search_domain, X=X_testing))
+            # print('X_batch shape: ', X_batch.shape)
         return X_batch, L_obj_val
     
     def update_gpmodel(self, X_new, Y_new):

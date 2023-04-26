@@ -37,8 +37,7 @@ class CoulombKernel(Kern):
         idxs = X[:,1].tolist()
         concs = X[:,0].reshape(-1,1)
         D = [self.domain[int(j)] for j in idxs]
-        # print('THIS IS THE LENGTH OF D: ', len(D))
-        print('THIS IS THE LENGTH OF idxs: ', len(idxs))
+        # print('length of D: ', len(D), len(idxs))
         D = np.vstack(D)
         mols = np.hstack([concs, D])
         return mols

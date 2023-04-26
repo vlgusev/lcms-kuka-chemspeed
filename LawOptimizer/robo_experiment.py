@@ -49,8 +49,8 @@ class Experiment(object):
 
 
     def __init__(self,
-                 root_path = "C:\\ACL_UoL\\LawOptimiser\\",
-                 settings_file = "C:\\ACL_UoL\\LawOptimiser\\expsettings.json",
+                root_path = "C:\\ACL_UoL\\LawOptimiser\\",
+                settings_file = "C:\\ACL_UoL\\LawOptimiser\\expsettings.json",
                 descr_path = "C:\\ACL_UoL\\LawOptimiser\\descriptors\\descriptors_{}.npy",
                 exp_res_path = "C:\\ACL_UoL\\LawOptimiser\\experiments",
                 exp_res_file_start = "PFAS_Dyes-res-",
@@ -165,18 +165,29 @@ class Experiment(object):
             X, Y  = copy(self.X), copy(self.Y)
             
             exp_file = os.path.join(self.exp_res_path, new_exp_files[0]) 
-            new_data = pd.read_csv(exp_file, skiprows=skiprows)
+            # new_data = pd.read_csv(exp_file, skiprows=skiprows)
+            # new_data.drop(["SampleIndex"], axis=1, inplace=True)
+            # Y_new = new_data["PeakArea"].values
+            # Y_new = Y_new.reshape(-1,1)
+            # X_data=new_data.drop("PeakArea", axis=1).values
+
+            # # -- conversion data into x = np.array([concentration, mol_idx])
+            # idxs = [np.where(x > 0)[0] for x in list( X_data)]
+            # idxs = np.vstack(idxs)
+            # concs =  X_data[ X_data > 0][0].reshape(-1,1)
+            # X_new = np.hstack([concs, idxs])
+
+            new_data = pd.read_csv(exp_file, skiprows=0)
             new_data.drop(["SampleIndex"], axis=1, inplace=True)
             Y_new = new_data["PeakArea"].values
             Y_new = Y_new.reshape(-1,1)
             X_data=new_data.drop("PeakArea", axis=1).values
-
+            X_data=X_data[:,:-1]
             # -- conversion data into x = np.array([concentration, mol_idx])
             idxs = [np.where(x > 0)[0] for x in list( X_data)]
             idxs = np.vstack(idxs)
             concs =  X_data[ X_data > 0].reshape(-1,1)
             X_new = np.hstack([concs, idxs])
-
         if X is not None:
             X=np.vstack([X,  X_new])
             Y=np.vstack([Y, Y_new])
@@ -308,7 +319,8 @@ class Experiment(object):
             ii = int(x[1]); value= x[0]
             X_out[j,ii]=value
             X_out[j,-1]=1-value
-        sample_idxs = (np.arange(1,17) + self.batch_size*(self.num_batch-1)).reshape(-1,1)
+        # sample_idxs = (np.arange(1,17) + self.batch_size*(self.num_batch-1)).reshape(-1,1)
+        sample_idxs = (np.arange(1,17) + self.batch_size*(self.num_batch)).reshape(-1,1)
         X_out = np.hstack([sample_idxs, X_out])
         np.savetxt(save_path, X_out, fmt='%.3f', delimiter=',' ,header= ",".join(columns), comments='')
 
@@ -318,17 +330,21 @@ class Experiment(object):
 
 if __name__ == "__main__":
 
-
+    root_path = "./"
     exp = Experiment(
-                    root_path = "./",
-                    settings_file = "./expsettings.json",
-                    descr_path = "./descriptors/descriptors_{}.npy",
-                    exp_res_path = "./experiments/",
+                    root_path = root_path,
+                    # settings_file = "./expsettings.json",
+                    # descr_path = "./descriptors/descriptors_{}.npy",
+                    # exp_res_path = "./experiments/",
+                    settings_file = os.path.join(root_path, "expsettings.json"),
+                    descr_path = os.path.join(root_path, "descriptors/descriptors_{}.npy"),
+                    exp_res_path = os.path.join(root_path, "experiments"),
                     )
     
 
     exp.apply_settings()
-    root_path = exp.root_path
+    # root_path = exp.root_path
+    root_dir = exp.root_path
     ndims = 2
     mol_idxs = list(exp.descriptors.keys())
     domain = [{'name':'concentration', 'type':'discrete', 'domain':0.1*np.arange(1,11), 'dimensionality':1},
@@ -349,65 +365,49 @@ if __name__ == "__main__":
     X_domain_init = np.array(search_domain_init)
 
     # optimizer =  exp.create_LAW_optimizer(X_domain_init, domain, X_new, Y_new, costs=costs)
-#%%
-sleep_time = 5
-n=0
-while True:
 
-    while exp.runnning == True:
-        sleep(sleep_time)
-        print('optimizer running')
-        continue
-    data = exp.get_inputs()
-    if data is None:
-        sleep(sleep_time)
-        continue
-    else:
-        X_new, Y_new = data
-    #  if no experimental results have been stored, this means the optimizer cannot have been created: create one
-    if exp.Y is None: 
-        optimizer =  exp.create_LAW_optimizer(X_domain_init, domain, X_new, Y_new, costs=costs)
+    sleep_time = 5
+    n=0
+    while True:
 
-    # -- If there is an optimizer model saved the optimizer model is loaded from 
-    # -- file and it is updated with the new data 
-    if "optimizer.npy" in os.listdir(root_path):
+        while exp.runnning == True:
+            sleep(sleep_time)
+            print('optimizer running')
+            continue
+        data = exp.get_inputs()
+        if data is None:
+            sleep(sleep_time)
+            continue
+        else:
+            X_new, Y_new = data
+        #  if no experimental results have been stored, this means the optimizer cannot have been created: create one
+        if exp.Y is None: 
+            optimizer =  exp.create_LAW_optimizer(X_domain_init, domain, X_new, Y_new, costs=costs)
 
-
-        data = np.load(os.path.join(root_path,'optimizer.npy'), allow_pickle=True).item()
-        search_domain=data['search_domain']
-        costs = data['costs']
-        optimizer = exp.create_LAW_optimizer(search_domain, domain, X_new, Y_new, costs=costs, stored_data=data)
+        # -- If there is an optimizer model saved the optimizer model is loaded from 
+        # -- file and it is updated with the new data 
+        if "optimizer.npy" in os.listdir(root_path):
 
 
-    # -- If there is no optimizer model file, all is created from scratch: 
-    else:
-        optimizer = exp.create_LAW_optimizer(X_domain_init, domain, X_new, Y_new, costs=costs)
-    
-    # -- Get and save the batch
-    X_batch = exp.suggest_batch(optimizer)
-    # optimizer.update_gpmodel(X_new, Y_new)
-    exp.save_batch(X_batch)
-    # opt_dict = optimizer.create_dict()
-    model_dict= optimizer.create_model_dict()
-    print(len(optimizer.acquisition.model.model.X))
-    np.save(os.path.join(root_path,'optimizer'), model_dict)
-    n+=1
+            data = np.load(os.path.join(root_path,'optimizer.npy'), allow_pickle=True).item()
+            search_domain=data['search_domain']
+            costs = data['costs']
+            optimizer = exp.create_LAW_optimizer(search_domain, domain, X_new, Y_new, costs=costs, stored_data=data)
 
-# %%
-# rec_opt=np.load('./test_opt.npy',allow_pickle=True).item()
-# rec_opt.keys()
 
-X_new, Y_new = exp.get_inputs()
-test_opt =  exp.create_LAW_optimizer(X_domain_init, domain, X_new, Y_new, costs=costs)
-D = test_opt.acquisition.model.__dict__
-CoulKern = D['kernel']
-params =CoulKern.param_array
-GPyKern_dict = CoulKern.kernel.__dict__
-# ddict = CoulKern.kernel._save_to_input_dict()
-ddict = CoulKern.kernel.to_dict()
-# GPyKern_test = RBF(**ddict)
-GPyKern_test = RBF.from_dict(**ddict)
-
+        # -- If there is no optimizer model file, all is created from scratch: 
+        else:
+            optimizer = exp.create_LAW_optimizer(X_domain_init, domain, X_new, Y_new, costs=costs)
+        
+        # -- Get and save the batch
+        X_batch = exp.suggest_batch(optimizer)
+        # optimizer.update_gpmodel(X_new, Y_new)
+        exp.save_batch(X_batch)
+        # opt_dict = optimizer.create_dict()
+        model_dict= optimizer.create_model_dict()
+        print(len(optimizer.acquisition.model.model.X))
+        np.save(os.path.join(root_path,'optimizer'), model_dict)
+        n+=1
 
 
 
