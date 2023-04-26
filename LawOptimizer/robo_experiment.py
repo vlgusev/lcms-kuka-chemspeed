@@ -291,6 +291,7 @@ class Experiment(object):
 
         ii=np.random.choice(range(len(search_domain)), self.batch_size, replace=False)
         selected_exp = np.array(search_domain)[ii]
+        self.num_batch +=1
         self.save_batch(selected_exp)
         return selected_exp
 
