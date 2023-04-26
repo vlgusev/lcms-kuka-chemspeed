@@ -45,20 +45,22 @@ class Chem_GPModel(GPyOpt.models.GPModel):
 
 
 #%%
+
 class Experiment(object):
 
 
     def __init__(self,
                 root_path = "C:\\ACL_UoL\\LawOptimiser\\",
-                settings_file = "C:\\ACL_UoL\\LawOptimiser\\expsettings.json",
-                descr_path = "C:\\ACL_UoL\\LawOptimiser\\descriptors\\descriptors_{}.npy",
-                exp_res_path = "C:\\ACL_UoL\\LawOptimiser\\experiments",
+                settings_file = "expsettings.json",
+                descr_path = "descriptors\\descriptors_{}.npy",
+                exp_res_path = "experiments",
                 exp_res_file_start = "PFAS_Dyes-res-",
                 batch_file_start = "PFAS_Dyes-batch-"                
                  
                  ):
         self.root_path = root_path
-        self.exp_res_path = exp_res_path
+        # self.exp_res_path = exp_res_path
+        self.exp_res_path = os.path.join(root_path, exp_res_path)
         self.exp_res_file_start = exp_res_file_start
         self.batch_file_start = batch_file_start
         self.num_batch = 0
@@ -74,7 +76,7 @@ class Experiment(object):
         if settings_file is  None:
             raise
         else:
-            self.settings_file = root_path + settings_file 
+            self.settings_file =  os.path.join(self.root_path, settings_file) 
 
     def create_directories(self, 
                            dirs = ["exp_results", "descriptors", "sugg_batches"],
@@ -113,6 +115,7 @@ class Experiment(object):
         self.config_path = chem_config_path
         descr_file_name = "{}.npy".format(dataset_name)
         descr_path = os.path.join(self.descr_path, descr_file_name)
+        # descr_path = os.path.join(self.root_path, descr_file_name)
         self.descr_path = descr_path
         
         # -- Setting all the possible conpounds of the experiment
