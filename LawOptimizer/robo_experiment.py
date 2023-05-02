@@ -315,21 +315,35 @@ class Experiment(object):
             Saves the suggested batch to file.
         '''
         print('batch num: ',self.num_batch)
-        f_name = self.batch_file_start + "{num}.run".format(num=self.num_batch)
-        # else:
-        #     f_name = out_file_name
-        save_path =os.path.join(self.exp_res_path, f_name)   
+        # f_name = self.batch_file_start + "{num}.run".format(num=self.num_batch)
+        # # else:
+        # #     f_name = out_file_name
+        # save_path =os.path.join(self.exp_res_path, f_name)   
+        # columns = ['SampleIndex']
+        # columns.extend(self.compounds)  
+        # columns.append('Water')
+        # X_out = np.zeros((len(X_batch), len(columns)))
+        # for j, x in enumerate(list(X_batch)):
+        #     ii = int(x[1]); value= x[0]
+        #     X_out[j,ii]=value
+        #     X_out[j,-1]=1-value
+        # # sample_idxs = (np.arange(1,17) + self.batch_size*(self.num_batch-1)).reshape(-1,1)
+        # sample_idxs = (np.arange(1,17) + self.batch_size*(self.num_batch)).reshape(-1,1)
+        # X_out = np.hstack([sample_idxs, X_out])
+        # np.savetxt(save_path, X_out, fmt='%.3f', delimiter=',' ,header= ",".join(columns), comments='')
+
+        f_name = exp.batch_file_start + "{num}.run".format(num=exp.num_batch)
+        save_path =os.path.join(exp.exp_res_path, f_name)   
         columns = ['SampleIndex']
-        columns.extend(self.compounds)  
+        columns.extend(exp.compounds)  
         columns.append('Water')
         X_out = np.zeros((len(X_batch), len(columns)))
         for j, x in enumerate(list(X_batch)):
             ii = int(x[1]); value= x[0]
             X_out[j,ii]=value
             X_out[j,-1]=1-value
-        # sample_idxs = (np.arange(1,17) + self.batch_size*(self.num_batch-1)).reshape(-1,1)
-        sample_idxs = (np.arange(1,17) + self.batch_size*(self.num_batch)).reshape(-1,1)
-        X_out = np.hstack([sample_idxs, X_out])
+        sample_idxs = (np.arange(1,17) + exp.batch_size*(exp.num_batch))
+        X_out[:,0]=sample_idxs
         np.savetxt(save_path, X_out, fmt='%.3f', delimiter=',' ,header= ",".join(columns), comments='')
 
 
@@ -415,7 +429,7 @@ if __name__ == "__main__":
         exp.save_batch(X_batch)
         # opt_dict = optimizer.create_dict()
         model_dict= optimizer.create_model_dict()
-        print(len(optimizer.acquisition.model.model.X))
+        # print(len(optimizer.acquisition.model.model.X))
         np.save(os.path.join(root_path,'optimizer'), model_dict)
         n+=1
 

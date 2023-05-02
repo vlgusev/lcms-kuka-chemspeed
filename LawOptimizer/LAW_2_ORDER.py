@@ -103,7 +103,7 @@ class LAW_BOptimizer(object):
         self.verbose = verbose
 
     def compute_batch(self, verbose=True, X_testing=None):
-        # print(len(self.search_domain))
+        print(len(self.search_domain))
         L_obj_val = []
         AF = self.acquisition._compute_acq(self.search_domain)
         if self.costs is not None:
