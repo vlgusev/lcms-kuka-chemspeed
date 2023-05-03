@@ -300,7 +300,7 @@ class Experiment(object):
             ii = int(x[1]); value= x[0]
             X_out[j,ii]=value
             X_out[j,-1]=1-value
-        sample_idxs = (np.arange(1,17) + self.batch_size*(self.num_batch))
+        sample_idxs = (np.arange(1,17) + self.batch_size*(self.num_batch - 1))
         X_out[:,0]=sample_idxs
         np.savetxt(save_path, X_out, fmt='%.3f', delimiter=',' ,header= ",".join(columns), comments='')
 
@@ -351,7 +351,7 @@ if __name__ == "__main__":
     X_domain_init = np.array(search_domain_init)
     exp.space_size = len(X_domain_init)
 
-    while exp.space_size > 0:
+    while exp.space_size - exp.batch_size> 0:
         while exp.runnning == True:
             sleep(SLEEP_TIME)
             print('optimizer running')
@@ -391,6 +391,7 @@ if __name__ == "__main__":
         exp.save_batch(X_batch)
         model_dict= optimizer.create_model_dict()
         exp.space_size -= exp.batch_size
+        print('space_size', exp.space_size)
         np.save(os.path.join(root_path,'optimizer'), model_dict)
         COUNT +=1
 
