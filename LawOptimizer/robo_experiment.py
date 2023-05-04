@@ -286,13 +286,23 @@ class Experiment(object):
         #     optimizer = LAW.LAW_BOptimizer.model_from_dict(data)
         return optimizer
 
+    # def create_initial_batch(self, search_domain):
+    #     ''' Creates initial suggested experiment to run an saves it to file'''
+
+    #     ii=np.random.choice(range(len(search_domain)), self.batch_size, replace=False)
+    #     selected_exp = np.array(search_domain)[ii]
+    #     self.save_batch(selected_exp)
+    #     return selected_exp
+
     def create_initial_batch(self, search_domain):
         ''' Creates initial suggested experiment to run an saves it to file'''
 
         ii=np.random.choice(range(len(search_domain)), self.batch_size, replace=False)
         selected_exp = np.array(search_domain)[ii]
+        self.num_batch +=1
         self.save_batch(selected_exp)
         return selected_exp
+
 
 
     def  suggest_batch(self, optimizer, X_testing=None):
@@ -348,6 +358,10 @@ if __name__ == "__main__":
                     exp_res_path = os.path.join(root_path, "experiments"),
                     )
     
+    optimizer_path = os.path.join(root_path, "optimizer.npy")
+
+    if os.path.exists(optimizer_path):
+        os.remove(optimizer_path)
 
     exp.apply_settings()
     # root_path = exp.root_path
