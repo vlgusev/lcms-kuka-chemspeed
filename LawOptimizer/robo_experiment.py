@@ -333,7 +333,8 @@ class Experiment(object):
         columns.append('Water')
         X_out = np.zeros((len(X_batch), len(columns)))
         for j, x in enumerate(list(X_batch)):
-            ii = int(x[1]); value= x[0]
+            # ii = int(x[1]); value= x[0]
+            ii = int(x[1]+1); value= x[0]
             X_out[j,ii]=value
             X_out[j,-1]=1-value
         # sample_idxs = (np.arange(1,17) + self.batch_size*(self.num_batch-1)).reshape(-1,1)
