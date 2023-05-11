@@ -13,36 +13,6 @@ import GPyOpt
 import GPy
 
 
-# %%
-
-class Chem_GPModel(GPyOpt.models.GPModel):
-
-    def __init__(self, kernel, noise_var=None, exact_feval=False, optimizer='bfgs', max_iters=1000, optimize_restarts=5, 
-                 sparse=False, num_inducing=10, verbose=False, ARD=False, mean_function=None, Gauss_noise_lim = None):
-        super().__init__(kernel=kernel, noise_var=noise_var, exact_feval=exact_feval, optimizer=optimizer, 
-                         max_iters=max_iters, optimize_restarts=optimize_restarts, sparse=sparse, 
-                         num_inducing=num_inducing, verbose=verbose, ARD=ARD, mean_function=mean_function)
-        self.Gauss_noise_lim =  Gauss_noise_lim
-        
-
-    def _create_model(self, X, Y):
-
-        kern = self.kernel
-        self.kernel = None
-        noise_lim  = self.Gauss_noise_lim
-        if not self.sparse:
-            self.model = GPy.models.GPRegression(X, Y, kernel=kern, mean_function=self.mean_function)
-        else:
-            self.model = GPy.models.SparseGPRegression(X, Y, kernel=kern, num_inducing=self.num_inducing, mean_function=self.mean_function)
-        if self.Gauss_noise_lim is not None and len(noise_lim) ==1:
-            self.model.Gaussian_noise.variance.constrain_fixed(noise_lim, warning=False)
-        elif self.Gauss_noise_lim is not None and len(noise_lim) ==2:
-            self.model.Gaussian_noise.variance.constrain_bounded(*noise_lim, warning=False)
-
-
-
-
-
 
 #%%
 
@@ -59,7 +29,6 @@ class Experiment(object):
                  
                  ):
         self.root_path = root_path
-        # self.exp_res_path = exp_res_path
         self.exp_res_path = os.path.join(root_path, exp_res_path)
         self.exp_res_file_start = exp_res_file_start
         self.batch_file_start = batch_file_start
@@ -159,9 +128,6 @@ class Experiment(object):
 
         exp_files = [f for f in os.listdir(self.exp_res_path) if f.startswith(self.exp_res_file_start)]
 
-        # new_exp_files=[f for f in exp_files
-        #                if int(f.rstrip(".run").split("-")[-1]) > self.num_batch]
-
         new_exp_files=[f for f in exp_files
                        if int(f.rstrip(".run").split("-")[-1]) == self.num_batch]
 
@@ -172,24 +138,13 @@ class Experiment(object):
             X, Y  = copy(self.X), copy(self.Y)
             
             exp_file = os.path.join(self.exp_res_path, new_exp_files[0]) 
-            # new_data = pd.read_csv(exp_file, skiprows=skiprows)
-            # new_data.drop(["SampleIndex"], axis=1, inplace=True)
-            # Y_new = new_data["PeakArea"].values
-            # Y_new = Y_new.reshape(-1,1)
-            # X_data=new_data.drop("PeakArea", axis=1).values
-
-            # # -- conversion data into x = np.array([concentration, mol_idx])
-            # idxs = [np.where(x > 0)[0] for x in list( X_data)]
-            # idxs = np.vstack(idxs)
-            # concs =  X_data[ X_data > 0][0].reshape(-1,1)
-            # X_new = np.hstack([concs, idxs])
-
             new_data = pd.read_csv(exp_file, skiprows=0)
             new_data.drop(["SampleIndex"], axis=1, inplace=True)
             Y_new = new_data["PeakArea"].values
             Y_new = Y_new.reshape(-1,1)
             X_data=new_data.drop("PeakArea", axis=1).values
             X_data=X_data[:,:-1]
+
             # -- conversion data into x = np.array([concentration, mol_idx])
             idxs = [np.where(x > 0)[0] for x in list( X_data)]
             idxs = np.vstack(idxs)
@@ -224,10 +179,6 @@ class Experiment(object):
         noise_var = np.std(Y)*0.001
         gp_model = LAW.GPModel(kernel, optimize_restarts=optimize_restarts, ARD=True)
         gp_model.model = LAW.GPRegression(X, Y, kernel=kernel, noise_var=noise_var)
-        # gp_model = Chem_GPModel(kernel, ARD=True)
-        # gp_model._create_model(X,Y)
-        # print(gp_model.model)
-        # --  setting the gp model contraints
         constraints = self.model_constraints
         for k in  constraints.keys():
             for j, c in  constraints[k].items():
@@ -253,15 +204,6 @@ class Experiment(object):
             kernel = self.create_kernel()
             gp_model =self.create_model(kernel.copy(), X_new, Y_new)
         else:
-            # gp_dict = stored_data.pop('gp_model')
-            # gp_reg_model = gp_dict.pop('model')
-            # gp_model = LAW.GPModel(**gp_dict)
-            # # gp_model = Chem_GPModel(**gp_dict)
-            # gp_model.model = gp_reg_model
-            # X= gp_reg_model.X.copy()
-            # Y= gp_reg_model.Y.copy()
-            # X_all, Y_all = np.vstack([X,X_new]), np.vstack([Y,Y_new])
-            # gp_model.model.set_XY(X_all, Y_all)
             gp_model= LAW.LAW_BOptimizer.model_from_dict(data)
         gp_model.model.optimize()
         space = LAW.Design_space(domain)
@@ -282,17 +224,9 @@ class Experiment(object):
                                 costs=costs,
                                 verbose=False,
                                 ) 
-        # else:
-        #     optimizer = LAW.LAW_BOptimizer.model_from_dict(data)
         return optimizer
 
-    # def create_initial_batch(self, search_domain):
-    #     ''' Creates initial suggested experiment to run an saves it to file'''
-
-    #     ii=np.random.choice(range(len(search_domain)), self.batch_size, replace=False)
-    #     selected_exp = np.array(search_domain)[ii]
-    #     self.save_batch(selected_exp)
-    #     return selected_exp
+ 
 
     def create_initial_batch(self, search_domain):
         ''' Creates initial suggested experiment to run an saves it to file'''
@@ -331,15 +265,17 @@ class Experiment(object):
         columns = ['SampleIndex']
         columns.extend(self.compounds)  
         columns.append('Water')
-        X_out = np.zeros((len(X_batch), len(columns)))
+        # X_out = np.zeros((len(X_batch), len(columns)))
+        X_out = np.zeros((self.batch_size, len(columns)))
         for j, x in enumerate(list(X_batch)):
             # ii = int(x[1]); value= x[0]
             ii = int(x[1]+1); value= x[0]
             X_out[j,ii]=value
             X_out[j,-1]=1-value
-        # sample_idxs = (np.arange(1,17) + self.batch_size*(self.num_batch-1)).reshape(-1,1)
-        sample_idxs = (np.arange(1,17) + self.batch_size*(self.num_batch)).reshape(-1,1)
-        X_out = np.hstack([sample_idxs, X_out])
+        sample_idxs = (np.arange(1,17) + self.batch_size*(self.num_batch-1))
+        # sample_idxs = (np.arange(1,17) + self.batch_size*(self.num_batch)).reshape(-1,1)
+        # X_out = np.hstack([sample_idxs, X_out])
+        X_out[:,0]=sample_idxs
         np.savetxt(save_path, X_out, fmt='%.3f', delimiter=',' ,header= ",".join(columns), comments='')
 
 
@@ -365,7 +301,6 @@ if __name__ == "__main__":
         os.remove(optimizer_path)
 
     exp.apply_settings()
-    # root_path = exp.root_path
     root_dir = exp.root_path
     ndims = 2
     mol_idxs = list(exp.descriptors.keys())
@@ -388,8 +323,6 @@ if __name__ == "__main__":
     search_domain_init=list(set(search_domain) - set(to_remove))
     X_domain_init = np.array(search_domain_init)
 
-    # optimizer =  exp.create_LAW_optimizer(X_domain_init, domain, X_new, Y_new, costs=costs)
-
     sleep_time = 5
     n=0
     while True:
@@ -404,7 +337,7 @@ if __name__ == "__main__":
             continue
         else:
             X_new, Y_new = data
-        #  if no experimental results have been stored, this means the optimizer cannot have been created: create one
+        # --  if no experimental results have been stored, this means the optimizer cannot have been created: create one
         if exp.Y is None: 
             optimizer =  exp.create_LAW_optimizer(X_domain_init, domain, X_new, Y_new, costs=costs)
 
@@ -427,7 +360,6 @@ if __name__ == "__main__":
         X_batch = exp.suggest_batch(optimizer)
         # optimizer.update_gpmodel(X_new, Y_new)
         exp.save_batch(X_batch)
-        # opt_dict = optimizer.create_dict()
         model_dict= optimizer.create_model_dict()
         print(len(optimizer.acquisition.model.model.X))
         np.save(os.path.join(root_path,'optimizer'), model_dict)
