@@ -193,7 +193,7 @@ class Experiment(object):
             model has been saved  yet. 
             search_domain: 2D array with all the input points.
         '''
-        
+
         v_lim = self.law_params['var_size']
         b, c = self.law_params['b_value'], self.law_params['c_value']
         weight_function = lambda x:c + b*x
@@ -244,9 +244,20 @@ class Experiment(object):
             Deletes file with last model.
             Saves new model.
         '''
-        self.runnning = True
-        batch = optimizer.compute_batch(X_testing=X_testing)
-        out = batch[0] if X_testing is None else batch
+        # self.runnning = True
+        # batch = optimizer.compute_batch(X_testing=X_testing)
+        # out = batch[0] if X_testing is None else batch
+        # self.num_batch +=1
+        # self.runnning = False
+        if self.space_size < self.batch_size:
+            out = optimizer.search_domain
+            m,n = out.shape
+            out = np.vstack([out, np.zeros((exp.batch_size-m,n))]) 
+
+        else:
+            self.runnning = True
+            batch = optimizer.compute_batch(X_testing=X_testing)
+            out = batch[0] if X_testing is None else batch
         self.num_batch +=1
         self.runnning = False
         return out
@@ -345,18 +356,20 @@ if __name__ == "__main__":
         
 
         # -- Get and save the batch
-        if exp.space_size >= exp.batch_size:
-            X_batch = exp.suggest_batch(optimizer)
-        else:
-            print('LAST BATCH, EXPERIMET OVER')
-            X_batch = optimizer.search_domain
-            exp.num_batch +=1
-            m,n = X_batch.shape
-            X_batch = np.vstack([X_batch, np.zeros((exp.batch_size-m,n))]) 
+        # if exp.space_size >= exp.batch_size:
+        X_batch = exp.suggest_batch(optimizer)
+        # else:
+        #     print('LAST BATCH, EXPERIMET OVER')
+        #     X_batch = optimizer.search_domain
+        #     exp.num_batch +=1
+        #     m,n = X_batch.shape
+        #     X_batch = np.vstack([X_batch, np.zeros((exp.batch_size-m,n))]) 
         optimizer.update_gpmodel(X_new, Y_new)
         exp.save_batch(X_batch)
         model_dict= optimizer.create_model_dict()
         exp.space_size -= exp.batch_size
         print('space_size', exp.space_size)
+        if exp.space_size < 0:
+            print('EXPERIMET OVER')
         np.save(os.path.join(root_path,'optimizer'), model_dict)
         COUNT +=1
