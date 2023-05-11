@@ -244,11 +244,9 @@ class Experiment(object):
             Deletes file with last model.
             Saves new model.
         '''
-        # self.runnning = True
-        # batch = optimizer.compute_batch(X_testing=X_testing)
-        # out = batch[0] if X_testing is None else batch
-        # self.num_batch +=1
-        # self.runnning = False
+        # -- If there fewer points in the search space then the batch size:
+        # -- fill the batch with the remaining points and pad the the last  
+        # -- line with zero dyes concentration
         if self.space_size < self.batch_size:
             out = optimizer.search_domain
             m,n = out.shape
@@ -274,7 +272,6 @@ class Experiment(object):
         columns.append('Water')
         X_out = np.zeros((self.batch_size, len(columns)))
         for j, x in enumerate(list(X_batch)):
-            # ii = int(x[1]); value= x[0]
             ii = int(x[1]+1); value= x[0]
             X_out[j,ii]=value
             X_out[j,-1]=1-value
@@ -356,14 +353,8 @@ if __name__ == "__main__":
         
 
         # -- Get and save the batch
-        # if exp.space_size >= exp.batch_size:
         X_batch = exp.suggest_batch(optimizer)
-        # else:
-        #     print('LAST BATCH, EXPERIMET OVER')
-        #     X_batch = optimizer.search_domain
-        #     exp.num_batch +=1
-        #     m,n = X_batch.shape
-        #     X_batch = np.vstack([X_batch, np.zeros((exp.batch_size-m,n))]) 
+
         optimizer.update_gpmodel(X_new, Y_new)
         exp.save_batch(X_batch)
         model_dict= optimizer.create_model_dict()
