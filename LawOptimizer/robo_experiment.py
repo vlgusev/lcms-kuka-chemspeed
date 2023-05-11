@@ -168,7 +168,7 @@ class Experiment(object):
         # --  Creating the kernel 
         if self.kernel_name == "CoulombKernel":
             GPy_kernel = RBF(input_dim=descr_dim, ARD=True)
-            kernel = CoulombKernel(input_dim=ndims, GPy_kern=GPy_kernel, domain=self.descriptors)
+            kernel = CoulombKernel(input_dim=NDIMS, GPy_kern=GPy_kernel, domain=self.descriptors)
         else:
             raise ValueError("Only CoulombKernel is implemented at the moment")
         return kernel
@@ -282,27 +282,117 @@ class Experiment(object):
 
 # %%
 
+# if __name__ == "__main__":
+
+#     root_path = "./"
+#     exp = Experiment(
+#                     root_path = root_path,
+#                     # settings_file = "./expsettings.json",
+#                     # descr_path = "./descriptors/descriptors_{}.npy",
+#                     # exp_res_path = "./experiments/",
+#                     settings_file = os.path.join(root_path, "expsettings.json"),
+#                     descr_path = os.path.join(root_path, "descriptors/descriptors_{}.npy"),
+#                     exp_res_path = os.path.join(root_path, "experiments"),
+#                     )
+    
+#     optimizer_path = os.path.join(root_path, "optimizer.npy")
+
+#     if os.path.exists(optimizer_path):
+#         os.remove(optimizer_path)
+
+#     exp.apply_settings()
+#     root_dir = exp.root_path
+#     ndims = 2
+#     mol_idxs = list(exp.descriptors.keys())
+#     domain = [{'name':'concentration', 'type':'discrete', 'domain':0.1*np.arange(1,11), 'dimensionality':1},
+#               {'name':'mol_id', 'type':'discrete', 'domain':mol_idxs, 'dimensionality':1}]
+
+#     # search_domain = list(product([0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9], mol_idxs))
+#     search_domain = list(product([0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 
+#                                    1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2.0, 
+#                                    2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, 2.8], mol_idxs))
+
+#     DF_costs = pd.read_csv(os.path.join(root_path,'costs_compounds.csv'))
+#     costs = dict(zip(DF_costs['idx'].values.tolist(), 
+#                       DF_costs['costs'].values.tolist()))
+#     exp.compounds=DF_costs['names'].values.tolist()
+
+#     X_init = exp.create_initial_batch(search_domain)
+#     # -- remove initial inputs from the search space
+#     to_remove = list(map(tuple, X_init.tolist()))
+#     search_domain_init=list(set(search_domain) - set(to_remove))
+#     X_domain_init = np.array(search_domain_init)
+
+#     sleep_time = 5
+#     n=0
+    # while True:
+
+    #     while exp.runnning == True:
+    #         sleep(sleep_time)
+    #         print('optimizer running')
+    #         continue
+    #     data = exp.get_inputs()
+    #     if data is None:
+    #         sleep(sleep_time)
+    #         continue
+    #     else:
+    #         X_new, Y_new = data
+    #     # --  if no experimental results have been stored, this means the optimizer cannot have been created: create one
+    #     if exp.Y is None: 
+    #         optimizer =  exp.create_LAW_optimizer(X_domain_init, domain, X_new, Y_new, costs=costs)
+
+    #     # -- If there is an optimizer model saved the optimizer model is loaded from 
+    #     # -- file and it is updated with the new data 
+    #     if "optimizer.npy" in os.listdir(root_path):
+
+
+    #         data = np.load(os.path.join(root_path,'optimizer.npy'), allow_pickle=True).item()
+    #         search_domain=data['search_domain']
+    #         costs = data['costs']
+    #         optimizer = exp.create_LAW_optimizer(search_domain, domain, X_new, Y_new, costs=costs, stored_data=data)
+
+
+    #     # -- If there is no optimizer model file, all is created from scratch: 
+    #     else:
+    #         optimizer = exp.create_LAW_optimizer(X_domain_init, domain, X_new, Y_new, costs=costs)
+        
+    #     # -- Get and save the batch
+    #     X_batch = exp.suggest_batch(optimizer)
+    #     # optimizer.update_gpmodel(X_new, Y_new)
+    #     exp.save_batch(X_batch)
+    #     model_dict= optimizer.create_model_dict()
+    #     print(len(optimizer.acquisition.model.model.X))
+    #     np.save(os.path.join(root_path,'optimizer'), model_dict)
+    #     n+=1
+
+
+
+
+
+
+# %%
 if __name__ == "__main__":
+    global root_path, NDIMS
 
     root_path = "./"
+    NDIMS = 2
+    SLEEP_TIME = 5
+    COUNT = 0
+
     exp = Experiment(
                     root_path = root_path,
-                    # settings_file = "./expsettings.json",
-                    # descr_path = "./descriptors/descriptors_{}.npy",
-                    # exp_res_path = "./experiments/",
                     settings_file = os.path.join(root_path, "expsettings.json"),
                     descr_path = os.path.join(root_path, "descriptors/descriptors_{}.npy"),
                     exp_res_path = os.path.join(root_path, "experiments"),
                     )
-    
     optimizer_path = os.path.join(root_path, "optimizer.npy")
-
     if os.path.exists(optimizer_path):
         os.remove(optimizer_path)
-
     exp.apply_settings()
+    # root_path = exp.root_path
     root_dir = exp.root_path
-    ndims = 2
+ 
+
     mol_idxs = list(exp.descriptors.keys())
     domain = [{'name':'concentration', 'type':'discrete', 'domain':0.1*np.arange(1,11), 'dimensionality':1},
               {'name':'mol_id', 'type':'discrete', 'domain':mol_idxs, 'dimensionality':1}]
@@ -316,58 +406,56 @@ if __name__ == "__main__":
     costs = dict(zip(DF_costs['idx'].values.tolist(), 
                       DF_costs['costs'].values.tolist()))
     exp.compounds=DF_costs['names'].values.tolist()
-
     X_init = exp.create_initial_batch(search_domain)
+
     # -- remove initial inputs from the search space
     to_remove = list(map(tuple, X_init.tolist()))
     search_domain_init=list(set(search_domain) - set(to_remove))
     X_domain_init = np.array(search_domain_init)
+    exp.space_size = len(X_domain_init)
 
-    sleep_time = 5
-    n=0
-    while True:
-
+    # while exp.space_size - exp.batch_size>= 0:
+    while exp.space_size >= 0:
         while exp.runnning == True:
-            sleep(sleep_time)
+            sleep(SLEEP_TIME)
             print('optimizer running')
             continue
         data = exp.get_inputs()
         if data is None:
-            sleep(sleep_time)
+            sleep(SLEEP_TIME)
             continue
         else:
             X_new, Y_new = data
-        # --  if no experimental results have been stored, this means the optimizer cannot have been created: create one
-        if exp.Y is None: 
+        # -- if no experiment has just started (COUNT = 0) there is no optimizer: create one
+        if COUNT == 0:
             optimizer =  exp.create_LAW_optimizer(X_domain_init, domain, X_new, Y_new, costs=costs)
 
-        # -- If there is an optimizer model saved the optimizer model is loaded from 
-        # -- file and it is updated with the new data 
+        # -- If there is an optimizer model saved, the optimizer created from file  
         if "optimizer.npy" in os.listdir(root_path):
-
-
             data = np.load(os.path.join(root_path,'optimizer.npy'), allow_pickle=True).item()
             search_domain=data['search_domain']
             costs = data['costs']
             optimizer = exp.create_LAW_optimizer(search_domain, domain, X_new, Y_new, costs=costs, stored_data=data)
 
-
         # -- If there is no optimizer model file, all is created from scratch: 
         else:
             optimizer = exp.create_LAW_optimizer(X_domain_init, domain, X_new, Y_new, costs=costs)
         
-        # -- Get and save the batch
-        X_batch = exp.suggest_batch(optimizer)
         # optimizer.update_gpmodel(X_new, Y_new)
+
+        # -- Get and save the batch
+        if exp.space_size >= exp.batch_size:
+            X_batch = exp.suggest_batch(optimizer)
+        else:
+            print('LAST BATCH, EXPERIMET OVER')
+            X_batch = optimizer.search_domain
+            exp.num_batch +=1
+            m,n = X_batch.shape
+            X_batch = np.vstack([X_batch, np.zeros((exp.batch_size-m,n))]) 
+        optimizer.update_gpmodel(X_new, Y_new)
         exp.save_batch(X_batch)
         model_dict= optimizer.create_model_dict()
-        print(len(optimizer.acquisition.model.model.X))
+        exp.space_size -= exp.batch_size
+        print('space_size', exp.space_size)
         np.save(os.path.join(root_path,'optimizer'), model_dict)
-        n+=1
-
-
-
-
-
-
-# %%
+        COUNT +=1
