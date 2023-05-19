@@ -308,10 +308,10 @@ if __name__ == "__main__":
     domain = [{'name':'concentration', 'type':'discrete', 'domain':0.1*np.arange(1,11), 'dimensionality':1},
               {'name':'mol_id', 'type':'discrete', 'domain':mol_idxs, 'dimensionality':1}]
 
-    # search_domain = list(product([0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9], mol_idxs))
-    search_domain = list(product([0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 
-                                   1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2.0, 
-                                   2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, 2.8], mol_idxs))
+    search_domain = list(product([0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9], mol_idxs))
+    # search_domain = list(product([0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 
+    #                                1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2.0, 
+    #                                2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, 2.8], mol_idxs))
 
     DF_costs = pd.read_csv(os.path.join(root_path,'costs_compounds.csv'))
     costs = dict(zip(DF_costs['idx'].values.tolist(), 
