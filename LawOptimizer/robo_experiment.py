@@ -268,7 +268,8 @@ class Experiment(object):
         f_name = self.batch_file_start + "{num}.run".format(num=self.num_batch)
         save_path =os.path.join(self.exp_res_path, f_name)   
         columns = ['SampleIndex']
-        columns.extend(self.compounds)  
+        # columns.extend(self.compounds)
+        columns.extend(['D{}'.format(j) for j in range(1, len(self.compounds)+1)])  
         columns.append('Water')
         X_out = np.zeros((self.batch_size, len(columns)))
         for j, x in enumerate(list(X_batch)):
