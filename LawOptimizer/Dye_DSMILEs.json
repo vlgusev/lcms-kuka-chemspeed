@@ -1,0 +1,7 @@
+{
+    "Eosin Y": "C1=CC=C2C(=C1)C(=O)OC23C4=CC(=C(C(=C4OC5=C(C(=C(C=C35)Br)O)Br)Br)O)Br",
+    "Rose bengal": "C1=C2C(=C3C=C(C(=O)C(=C3OC2=C(C(=C1[131I])O)[131I])[131I])[131I])C4=C(C(=C(C(=C4Cl)Cl)Cl)Cl)C(=O)O",
+    "Luminol": "C1=CC2=C(C(=C1)N)C(=O)NNC2=O",
+    "Coumarin 6": "CCN(CC)C1=CC2=C(C=C1)C=C(C(=O)O2)C3=NC4=CC=CC=C4S3",
+    "Fluorescein o-acrylate": "C=CC(=O)OC1=CC2=C(C=C1)C3(C4=C(O2)C=C(C=C4)O)C5=CC=CC=C5C(=O)O3"
+}

@@ -1,0 +1,12 @@
+{
+    "DMSO": "CS(=O)C",
+    "MeCN": "CC#N.CC#N",
+    "water": "O",
+    "Acetone": "CC(=O)C",
+    "EtOAc": "CCOC(=O)C.CCOC(=O)C",
+    "K2HPO4": "OP(=O)([O-])[O-].[K].[K]",
+    "Na2HPO4": "OP(=O)([O-])[O-].[Na].[Na]",
+    "K3PO4": "[O-]P(=O)([O-])[O-].[K].[K].[K]",
+    "K2CO3": "C(=O)([O-])[O-].[K].[K]",
+    "Cs2CO3": "C(=O)([O-])[O-].[Cs].[Cs]"
+}
